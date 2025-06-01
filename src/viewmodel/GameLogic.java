@@ -14,14 +14,14 @@ import view.MenuScreen;
 
 public class GameLogic implements ActionListener {
     public enum GameState {
-        MENU, PLAYING, NET_FIRED, STRUGGLING, GAME_OVER
+        MENU, PLAYING, HARPOON_FIRED, STRUGGLING, GAME_OVER
     }
 
     private GamePanel gamePanel;
     private Timer gameTimerLoop;
 
     private Player player;
-    private Net net;
+    private Harpoon harpoon;
     private Jar jar;
     private JellyfishHandler jellyfishHandler;
     private String currentUsername;
@@ -43,56 +43,54 @@ public class GameLogic implements ActionListener {
     }
 
     private void initializeGameEntities() {
-        // --- Inisialisasi Player dengan Animasi Sprite Sheet ---
-        // GANTI NILAI-NILAI INI SESUAI DENGAN DETAIL ASET SPRITE SHEET PLAYER ANDA
-        String idleSheetPath = "/assets/images/player-idle.png";         // Path ke sprite sheet idle
-        String swimmingSheetPath = "/assets/images/player-swiming.png";   // Path ke sprite sheet swimming
+        String idleSheetPath = "/assets/images/idle-player.png";     
+        String swimmingSheetPath = "/assets/images/swim-player.png"; 
+        String shootSheetPath = "/assets/images/shoot-player.png";   
 
-        // Dimensi satu frame animasi dari sprite sheet (asumsikan sama untuk idle & swimming)
-        int playerSpriteFrameWidth = 80;    // CONTOH: Lebar satu frame di sprite sheet (misal 32px)
-        int playerSpriteFrameHeight = 80;   // CONTOH: Tinggi satu frame di sprite sheet (misal 32px)
+        int playerSpriteFrameWidth = 128;    
+        int playerSpriteFrameHeight = 128;   
         
-        // Jumlah frame untuk masing-masing animasi
-        int playerIdleFramesCount = 5;      // CONTOH: Jumlah frame dalam animasi idle
-        int playerSwimmingFramesCount = 6;  // CONTOH: Jumlah frame dalam animasi swimming
+        // Semua sprite sheet sekarang memiliki 12 frame
+        int playerIdleFramesCount = 12;      
+        int playerSwimmingFramesCount = 12;  
+        int playerShootFramesCount = 12;     
         
-        // Kecepatan animasi (durasi tampilan per frame dalam milidetik)
-        int playerFrameDelayMs = 100;       // CONTOH: 150ms per frame
+        int playerFrameDelayMs = 100;       // Anda bisa sesuaikan kecepatan animasi ini
+        int playerShootFrameDelayMs = 20;
 
         player = new Player(
-            Constants.PLAYER_START_X,           // Posisi X awal dari Constants
-            Constants.PLAYER_START_Y,           // Posisi Y awal dari Constants
-            Constants.PLAYER_WIDTH,             // Lebar render Player di layar (dari Constants)
-            Constants.PLAYER_HEIGHT,            // Tinggi render Player di layar (dari Constants)
-            Constants.PLAYER_INITIAL_HEARTS,    // Jumlah nyawa awal (dari Constants)
-            idleSheetPath,                      // Path ke sprite sheet idle
-            swimmingSheetPath,                  // Path ke sprite sheet swimming
-            playerSpriteFrameWidth,             // Lebar satu frame animasi
-            playerSpriteFrameHeight,            // Tinggi satu frame animasi
-            playerIdleFramesCount,              // Jumlah frame untuk animasi idle
-            playerSwimmingFramesCount,          // Jumlah frame untuk animasi swimming
-            playerFrameDelayMs                  // Delay antar frame animasi
+            Constants.PLAYER_START_X,
+            Constants.PLAYER_START_Y,
+            Constants.PLAYER_WIDTH,
+            Constants.PLAYER_HEIGHT,
+            Constants.PLAYER_INITIAL_HEARTS,
+            idleSheetPath,
+            swimmingSheetPath,
+            shootSheetPath,
+            playerSpriteFrameWidth,
+            playerSpriteFrameHeight,
+            playerIdleFramesCount,
+            playerSwimmingFramesCount,
+            playerShootFramesCount,
+            playerFrameDelayMs,
+            playerShootFrameDelayMs
         );
 
-        // --- Inisialisasi Objek Lain (Net, Jar, JellyfishHandler) ---
-        net = new Net(player); // Net membutuhkan referensi ke objek Player
-
-        // PASTIKAN ASET GAMBAR UNTUK JAR ADA DI PATH YANG BENAR
-        jar = new Jar(
+        harpoon = new Harpoon(player); //
+        // Pastikan path gambar Jar sudah benar dan ada di Constants atau langsung di sini
+        jar = new Jar( //
             Constants.JAR_X, 
             Constants.JAR_Y, 
             Constants.JAR_WIDTH, 
             Constants.JAR_HEIGHT, 
-            "/assets/images/jar_image.png" // Path ke gambar Jar
+            "/assets/images/jar_image.png" // Pastikan aset ini ada
         );
+        jellyfishHandler = new JellyfishHandler(); //
+        jellyfishHandler.reset(); //
 
-        jellyfishHandler = new JellyfishHandler();
-        jellyfishHandler.reset(); // Pastikan handler ubur-ubur direset setiap game baru dimulai
-
-        // --- Reset Variabel Status Game ---
-        jellyfishInStruggle = null; // Tidak ada jellyfish yang sedang di-struggle di awal
-        remainingTimeSeconds = Constants.INITIAL_GAME_TIME_SECONDS; // Reset waktu game
-        struggleBarValue = 0; // Reset progress bar struggle
+        jellyfishInStruggle = null; 
+        remainingTimeSeconds = Constants.INITIAL_GAME_TIME_SECONDS; //
+        struggleBarValue = 0; 
     }
     
     public void startGame(String username) {
@@ -129,7 +127,7 @@ public class GameLogic implements ActionListener {
     public void actionPerformed(ActionEvent e) { // Dipanggil oleh gameTimerLoop (60x per detik)
         if (currentState == GameState.PLAYING) {
             updatePlayingState();
-        } else if (currentState == GameState.NET_FIRED) {
+        } else if (currentState == GameState.HARPOON_FIRED) {
             updateNetFiredState();
         } else if (currentState == GameState.STRUGGLING) {
             updateStrugglingState();
@@ -144,28 +142,28 @@ public class GameLogic implements ActionListener {
     private void updatePlayingState() {
         player.update(); // Update posisi player berdasarkan input
         jellyfishHandler.updateJellyfish(); // Spawn dan gerakkan ubur-ubur
-        // Net tidak di-update di state ini, hanya saat ditembakkan
+        // harpoon tidak di-update di state ini, hanya saat ditembakkan
     }
 
     private void updateNetFiredState() {
-        player.update(); // Player mungkin masih bisa bergerak saat net ditembakkan
-        net.update();    // Update posisi net (memanjang atau menarik)
+        player.update(); // Player mungkin masih bisa bergerak saat harpoon ditembakkan
+        harpoon.update();    // Update posisi harpoon (memanjang atau menarik)
         jellyfishHandler.updateJellyfish(); // Ubur-ubur lain tetap bergerak
 
-        Jellyfish hooked = net.getHookedJellyfish();
-        if (hooked == null) { // Jika net masih mencari target
-            // Iterasi semua jellyfish untuk cek collision dengan ujung net
+        Jellyfish hooked = harpoon.getHookedJellyfish();
+        if (hooked == null) { // Jika harpoon masih mencari target
+            // Iterasi semua jellyfish untuk cek collision dengan ujung harpoon
             for (Jellyfish jf : jellyfishHandler.getJellyfishes()) { // Ambil list copy
-                if (net.getTipCollisionBox().intersects(jf.getCollisionBox()) && jf != net.getHookedJellyfish()) {
-                    net.hookJellyfish(jf); // Net mengenai jellyfish
+                if (harpoon.getTipCollisionBox().intersects(jf.getCollisionBox()) && jf != harpoon.getHookedJellyfish()) {
+                    harpoon.hookJellyfish(jf); // harpoon mengenai jellyfish
                     SoundManager.playSound("assets/sounds/catch_sound.wav", false); // Efek suara tangkap
                     break; // Hanya tangkap satu per tembakan
                 }
             }
-            if (!net.isFiring()) { // Jika net ditarik kembali (miss atau max length)
+            if (!harpoon.isFiring()) { // Jika harpoon ditarik kembali (miss atau max length)
                 currentState = GameState.PLAYING; // Kembali ke state normal
             }
-        } else { // Jika net sudah menangkap dan sedang menarik
+        } else { // Jika harpoon sudah menangkap dan sedang menarik
             // Cek apakah jellyfish yang ditarik sudah sampai di player
             if (player.getCollisionBox().intersects(hooked.getCollisionBox())) {
                 startStruggle(hooked); // Mulai mekanisme struggle
@@ -191,10 +189,13 @@ public class GameLogic implements ActionListener {
     }
 
     // Dipanggil dari InputHandler saat player klik mouse
-    public void handlePlayerFireNet(float targetX, float targetY) {
-        if (currentState == GameState.PLAYING && !net.isFiring()) { // Net hanya bisa ditembakkan jika sedang PLAYING dan net tidak sedang aktif
-            net.fire(targetX, targetY);
-            currentState = GameState.NET_FIRED; // Ubah state menjadi net ditembakkan
+    public void handlePlayerFireHarpoon(float targetX, float targetY) { //
+        if (currentState == GameState.PLAYING && !harpoon.isFiring()) { //
+            harpoon.fire(targetX, targetY); //
+            if (player != null) {
+                player.playShootAnimation(); 
+            }
+            currentState = GameState.HARPOON_FIRED; //
         }
     }
     
@@ -205,7 +206,7 @@ public class GameLogic implements ActionListener {
             if (struggleBarValue >= Constants.STRUGGLE_BAR_MAX_VALUE) { // Jika bar penuh
                 succeedStruggle(); // Berhasil
             }
-        } else if (currentState == GameState.PLAYING || currentState == GameState.NET_FIRED) {
+        } else if (currentState == GameState.PLAYING || currentState == GameState.HARPOON_FIRED) {
             // PDF: "Tombol space digunakan untuk menghentikan permainan dan kembali pada tampilan awal." [cite: 35, 81]
             returnToMenu(true); // true = simpan skor saat quit manual
         }
@@ -217,7 +218,7 @@ public class GameLogic implements ActionListener {
             remainingTimeSeconds += Constants.TIME_BONUS_PER_CATCH_SECONDS; // Tambah waktu
             SoundManager.playSound("assets/sounds/success_sound.wav", false); // Efek suara berhasil
         }
-        net.finishAttempt(); // Reset net
+        harpoon.finishAttempt(); // Reset harpoon
         jellyfishInStruggle = null;
         currentState = GameState.PLAYING; // Kembali ke state normal
     }
@@ -226,7 +227,7 @@ public class GameLogic implements ActionListener {
         player.loseHeart(); // Kurangi nyawa
         SoundManager.playSound("assets/sounds/fail_sound.wav", false); // Efek suara gagal
         
-        net.finishAttempt(); // Reset net
+        harpoon.finishAttempt(); // Reset harpoon
         // jellyfishInStruggle sudah di-remove dari handler, jadi dia "hilang"
         jellyfishInStruggle = null;
         currentState = GameState.PLAYING; // Kembali ke state normal
@@ -299,7 +300,7 @@ public class GameLogic implements ActionListener {
         jar.render(g);
         jellyfishHandler.renderJellyfish(g);
         player.render(g);
-        net.render(g);
+        harpoon.render(g);
         // Jika jellyfish yang sedang di-struggle perlu digambar secara khusus (misal, di atas player)
         if(jellyfishInStruggle != null && currentState == GameState.STRUGGLING) {
             // Atur posisi jellyfishInStruggle dekat player jika perlu

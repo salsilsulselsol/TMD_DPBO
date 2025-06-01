@@ -25,7 +25,7 @@ public class InputHandler extends MouseAdapter { // MouseAdapter untuk klik net
         // Hanya proses jika klik kiri mouse [cite: 41, 87] (diasumsikan klik kiri)
         if (e.getButton() == MouseEvent.BUTTON1) { 
              if (gameLogic.getCurrentState() == GameLogic.GameState.PLAYING) { // Hanya bisa menembak saat PLAYING
-                gameLogic.handlePlayerFireNet(e.getX(), e.getY()); // Teruskan koordinat klik
+                gameLogic.handlePlayerFireHarpoon(e.getX(), e.getY()); // Teruskan koordinat klik
             }
         }
     }
@@ -53,7 +53,7 @@ public class InputHandler extends MouseAdapter { // MouseAdapter untuk klik net
 
             // Proses pergerakan player jika state mengizinkan [cite: 26, 36, 37, 72, 82, 83]
             if (gameLogic.getCurrentState() == GameLogic.GameState.PLAYING || 
-                gameLogic.getCurrentState() == GameLogic.GameState.NET_FIRED) { // Player bisa bergerak saat net ditembakkan
+                gameLogic.getCurrentState() == GameLogic.GameState.HARPOON_FIRED) { // Player bisa bergerak saat net ditembakkan
                 switch (key) {
                     case KeyEvent.VK_W: case KeyEvent.VK_UP:    currentPlayer.setMoveUp(true); break;
                     case KeyEvent.VK_S: case KeyEvent.VK_DOWN:  currentPlayer.setMoveDown(true); break;
@@ -79,9 +79,9 @@ public class InputHandler extends MouseAdapter { // MouseAdapter untuk klik net
             if (currentPlayer == null) return;
 
             int key = e.getKeyCode();
-            // Hanya proses pergerakan jika state PLAYING atau NET_FIRED
+            // Hanya proses pergerakan jika state PLAYING atau HARPOON_FIRED
             if (gameLogic.getCurrentState() == GameLogic.GameState.PLAYING || 
-                gameLogic.getCurrentState() == GameLogic.GameState.NET_FIRED) {
+                gameLogic.getCurrentState() == GameLogic.GameState.HARPOON_FIRED) {
                 switch (key) {
                     case KeyEvent.VK_W: case KeyEvent.VK_UP:    currentPlayer.setMoveUp(false); break;
                     case KeyEvent.VK_S: case KeyEvent.VK_DOWN:  currentPlayer.setMoveDown(false); break;

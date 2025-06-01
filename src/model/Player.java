@@ -2,7 +2,7 @@ package model;
 
 import java.awt.Color;
 import java.awt.Graphics;
-import java.awt.image.BufferedImage; // Lebih baik untuk memotong sprite sheet
+import java.awt.image.BufferedImage;
 import java.net.URL;
 import javax.imageio.ImageIO;
 import viewmodel.Constants;
@@ -12,49 +12,62 @@ public class Player extends GameObject {
     private int hearts;
     private boolean moveLeft, moveRight, moveUp, moveDown;
 
-    // Properti untuk Animasi Sprite Sheet
     private BufferedImage idleSpriteSheet;
     private BufferedImage swimmingSpriteSheet;
-    private BufferedImage currentSpriteSheet; // Sprite sheet yang aktif saat ini
+    private BufferedImage shootSpriteSheet; 
+    private BufferedImage currentSpriteSheet;
 
-    private int frameWidth;        // Lebar satu frame animasi (asumsikan sama untuk idle & swimming)
-    private int frameHeight;       // Tinggi satu frame animasi (asumsikan sama)
+    private int frameWidth;     
+    private int frameHeight;    
     
-    private int currentAnimFrame;  // Frame animasi yang sedang ditampilkan (indeks kolom)
+    private int currentAnimFrame;
     private int totalIdleFrames;
     private int totalSwimmingFrames;
-    private int currentAnimationTotalFrames; // Jumlah frame untuk animasi saat ini
+    private int totalShootFrames;       
+    private int currentAnimationTotalFrames;
 
     private long lastFrameTime;
-    private int frameDelayMs;       // Durasi tampilan per frame (dalam milidetik)
+    private int frameDelayMs;
+    private int shootFrameDelayMs;
 
-    private boolean isMoving;       // Status apakah player sedang bergerak
+    private boolean isMoving;
+    private boolean isFacingRight = true;
+
+    private enum AnimationState {
+        IDLE,
+        SWIMMING,
+        SHOOTING
+    }
+    private AnimationState currentAnimationState;
 
     public Player(float x, float y, int renderWidth, int renderHeight, int initialHearts,
-                  String idleSheetPath, String swimmingSheetPath,
+                  String idleSheetPath, String swimmingSheetPath, String shootSheetPath, 
                   int frameW, int frameH, 
-                  int idleFrames, int swimmingFrames, int frameDelay) {
+                  int idleFrames, int swimmingFrames, int shootFrames, 
+                  int frameDelay, int shootFrameDelay) {
         
-        super(x, y, renderWidth, renderHeight); // renderWidth/Height adalah ukuran player di layar
+        super(x, y, renderWidth, renderHeight); 
         this.hearts = initialHearts;
         
-        this.frameWidth = frameW;
-        this.frameHeight = frameH;
+        this.frameWidth = frameW; 
+        this.frameHeight = frameH; 
         this.totalIdleFrames = idleFrames;
         this.totalSwimmingFrames = swimmingFrames;
+        this.totalShootFrames = shootFrames; 
         this.frameDelayMs = frameDelay;
+        this.shootFrameDelayMs = shootFrameDelay;
         
         this.currentAnimFrame = 0;
         this.lastFrameTime = System.currentTimeMillis();
         this.isMoving = false;
+        this.isFacingRight = true;
 
-        loadSpriteSheets(idleSheetPath, swimmingSheetPath);
+        loadSpriteSheets(idleSheetPath, swimmingSheetPath, shootSheetPath); 
         
-        // Set animasi awal ke idle
-        setAnimation(false); // false untuk idle
+        setAnimationState(AnimationState.IDLE); 
     }
 
-    private void loadSpriteSheets(String idlePath, String swimmingPath) {
+    private void loadSpriteSheets(String idlePath, String swimmingPath, String shootPath) {
         try {
             URL idleUrl = getClass().getResource(idlePath);
             if (idleUrl != null) {
@@ -69,37 +82,59 @@ public class Player extends GameObject {
             } else {
                 System.err.println("Gagal memuat swimming sprite sheet: " + swimmingPath);
             }
+
+            URL shootUrl = getClass().getResource(shootPath); 
+            if (shootUrl != null) {
+                this.shootSpriteSheet = ImageIO.read(shootUrl);
+            } else {
+                System.err.println("Gagal memuat shoot sprite sheet: " + shootPath);
+            }
+
         } catch (Exception e) {
             System.err.println("Error saat memuat sprite sheets: " + e.getMessage());
         }
     }
 
-    // Metode untuk mengganti animasi (dan sprite sheet yang digunakan)
-    private void setAnimation(boolean moving) {
-        this.isMoving = moving;
-        if (this.isMoving) {
-            if (currentSpriteSheet != swimmingSpriteSheet) { // Hanya ganti jika berbeda
-                currentSpriteSheet = swimmingSpriteSheet;
-                currentAnimationTotalFrames = totalSwimmingFrames;
-                currentAnimFrame = 0; // Reset frame saat ganti animasi
-            }
-        } else {
-            if (currentSpriteSheet != idleSpriteSheet) { // Hanya ganti jika berbeda
+    private void setAnimationState(AnimationState newState) {
+        if (this.currentAnimationState == newState && newState != AnimationState.SHOOTING) {
+            return;
+        }
+        
+        this.currentAnimationState = newState;
+        this.currentAnimFrame = 0; 
+        this.lastFrameTime = System.currentTimeMillis(); 
+
+        switch (newState) {
+            case IDLE:
                 currentSpriteSheet = idleSpriteSheet;
                 currentAnimationTotalFrames = totalIdleFrames;
-                currentAnimFrame = 0; // Reset frame
-            }
+                break;
+            case SWIMMING:
+                currentSpriteSheet = swimmingSpriteSheet;
+                currentAnimationTotalFrames = totalSwimmingFrames;
+                break;
+            case SHOOTING:
+                currentSpriteSheet = shootSpriteSheet;
+                currentAnimationTotalFrames = totalShootFrames;
+                break;
         }
     }
 
-    private void updateAnimationLogic() {
+    private void updateAnimationLogic() { //
         if (currentSpriteSheet == null || currentAnimationTotalFrames == 0) return;
 
         long currentTime = System.currentTimeMillis();
-        if (currentTime - lastFrameTime > frameDelayMs) {
+        int currentFrameDelay = (currentAnimationState == AnimationState.SHOOTING) ? shootFrameDelayMs : frameDelayMs; // Pilih delay yang sesuai
+
+        if (currentTime - lastFrameTime > currentFrameDelay) { // Gunakan currentFrameDelay
             currentAnimFrame++;
             if (currentAnimFrame >= currentAnimationTotalFrames) {
-                currentAnimFrame = 0; // Kembali ke frame awal
+                if (currentAnimationState == AnimationState.SHOOTING) {
+                    currentAnimFrame = 0; 
+                    finishShootAnimation(); 
+                } else {
+                    currentAnimFrame = 0; 
+                }
             }
             lastFrameTime = currentTime;
         }
@@ -108,60 +143,74 @@ public class Player extends GameObject {
     @Override
     public void update() {
         float dx = 0, dy = 0;
-        boolean currentlyMoving = false; // Cek apakah ada input gerakan pada frame ini
+        boolean currentlyMoving = false; 
 
-        if (moveLeft) { dx -= speed; currentlyMoving = true; }
-        if (moveRight) { dx += speed; currentlyMoving = true; }
+        if (moveLeft) { dx -= speed; currentlyMoving = true; isFacingRight = false; }
+        if (moveRight) { dx += speed; currentlyMoving = true; isFacingRight = true; }
         if (moveUp) { dy -= speed; currentlyMoving = true; }
         if (moveDown) { dy += speed; currentlyMoving = true; }
-
-        // Ganti animasi jika status bergerak berubah
-        if (currentlyMoving && !this.isMoving) {
-            setAnimation(true); // Pindah ke animasi swimming
-        } else if (!currentlyMoving && this.isMoving) {
-            setAnimation(false); // Pindah ke animasi idle
+        
+        if (currentAnimationState != AnimationState.SHOOTING) {
+            if (currentlyMoving && currentAnimationState != AnimationState.SWIMMING) {
+                setAnimationState(AnimationState.SWIMMING);
+            } else if (!currentlyMoving && currentAnimationState != AnimationState.IDLE) {
+                setAnimationState(AnimationState.IDLE);
+            }
         }
         
         x += dx;
         y += dy;
 
-        // Batasan layar
         if (x < 0) x = 0;
         if (y < 0) y = 0;
-        if (x + width > Constants.GAME_WIDTH) x = Constants.GAME_WIDTH - width; // width adalah renderWidth
-        if (y + height > Constants.GAME_HEIGHT) y = Constants.GAME_HEIGHT - height; // height adalah renderHeight
+        if (x + width > Constants.GAME_WIDTH) x = Constants.GAME_WIDTH - width;  //
+        if (y + height > Constants.GAME_HEIGHT) y = Constants.GAME_HEIGHT - height;  //
 
         updateCollisionBox();
-        updateAnimationLogic(); // Selalu update logika frame animasi
+        updateAnimationLogic(); 
     }
 
-    @Override
-    public void render(Graphics g) {
-        if (currentSpriteSheet != null && currentAnimationTotalFrames > 0) {
-            // Asumsi semua animasi ada di baris ke-0 dari masing-masing sprite sheet
-            // Jika sprite sheet punya beberapa baris untuk arah berbeda, perlu currentRow
-            int sx1 = currentAnimFrame * frameWidth;
-            int sy1 = 0; // Baris ke-0 pada sprite sheet
-            int sx2 = sx1 + frameWidth;
-            int sy2 = frameHeight; // Karena hanya satu baris
+    public void playShootAnimation() {
+        setAnimationState(AnimationState.SHOOTING);
+    }
 
-            // `width` dan `height` di sini adalah renderWidth dan renderHeight dari konstruktor super()
-            g.drawImage(currentSpriteSheet, 
-                        (int)x, (int)y, (int)x + width, (int)y + height, 
-                        sx1, sy1, sx2, sy2, 
-                        null);
-        } else if (image != null) { // Fallback ke gambar statis jika ada (dari GameObject)
-             g.drawImage(image, (int)x, (int)y, width, height, null);
+    private void finishShootAnimation() {
+        if (isMoving) { 
+            setAnimationState(AnimationState.SWIMMING);
+        } else {
+            setAnimationState(AnimationState.IDLE);
         }
-        else {
-            // Fallback jika sprite sheet atau gambar statis gagal dimuat
+    }
+    
+    @Override
+    public void render(Graphics g) { //
+        if (currentSpriteSheet != null && currentAnimationTotalFrames > 0) {
+            int sx1 = currentAnimFrame * frameWidth;
+            int sy1 = 0; 
+            int sx2 = sx1 + frameWidth;
+            int sy2 = frameHeight; 
+
+            int dx1 = (int)x;
+            int dy1 = (int)y;
+            int dx2 = (int)x + width; 
+            int dy2 = (int)y + height;
+
+            if (!isFacingRight) {
+                int tempSx1 = sx1;
+                sx1 = sx2;
+                sx2 = tempSx1;
+            }
+            g.drawImage(currentSpriteSheet, dx1, dy1, dx2, dy2, sx1, sy1, sx2, sy2, null);
+        } else if (image != null) { 
+             g.drawImage(image, (int)x, (int)y, width, height, null);
+        } else {
             g.setColor(Color.YELLOW); 
             g.fillRect((int)x, (int)y, width, height);
         }
     }
 
     public void loseHeart() { if (hearts > 0) hearts--; }
-    public int getHearts() { return hearts; }
+    public int getHearts() { return hearts; } //
     public void setMoveLeft(boolean b) { moveLeft = b; }
     public void setMoveRight(boolean b) { moveRight = b; }
     public void setMoveUp(boolean b) { moveUp = b; }
