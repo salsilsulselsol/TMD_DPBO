@@ -43,16 +43,56 @@ public class GameLogic implements ActionListener {
     }
 
     private void initializeGameEntities() {
-        player = new Player(Constants.PLAYER_START_X, Constants.PLAYER_START_Y,
-                             Constants.PLAYER_WIDTH, Constants.PLAYER_HEIGHT, Constants.PLAYER_INITIAL_HEARTS);
-        net = new Net(player); // Net butuh referensi ke player
-        jar = new Jar(Constants.JAR_X, Constants.JAR_Y, Constants.JAR_WIDTH, Constants.JAR_HEIGHT, "/assets/images/jar_image.png"); // PASTIKAN ASET ADA
-        jellyfishHandler = new JellyfishHandler();
-        jellyfishHandler.reset(); // Pastikan handler ubur-ubur direset
+        // --- Inisialisasi Player dengan Animasi Sprite Sheet ---
+        // GANTI NILAI-NILAI INI SESUAI DENGAN DETAIL ASET SPRITE SHEET PLAYER ANDA
+        String idleSheetPath = "/assets/images/player-idle.png";         // Path ke sprite sheet idle
+        String swimmingSheetPath = "/assets/images/player-swiming.png";   // Path ke sprite sheet swimming
+
+        // Dimensi satu frame animasi dari sprite sheet (asumsikan sama untuk idle & swimming)
+        int playerSpriteFrameWidth = 80;    // CONTOH: Lebar satu frame di sprite sheet (misal 32px)
+        int playerSpriteFrameHeight = 80;   // CONTOH: Tinggi satu frame di sprite sheet (misal 32px)
         
-        jellyfishInStruggle = null;
-        remainingTimeSeconds = Constants.INITIAL_GAME_TIME_SECONDS;
-        struggleBarValue = 0;
+        // Jumlah frame untuk masing-masing animasi
+        int playerIdleFramesCount = 5;      // CONTOH: Jumlah frame dalam animasi idle
+        int playerSwimmingFramesCount = 6;  // CONTOH: Jumlah frame dalam animasi swimming
+        
+        // Kecepatan animasi (durasi tampilan per frame dalam milidetik)
+        int playerFrameDelayMs = 100;       // CONTOH: 150ms per frame
+
+        player = new Player(
+            Constants.PLAYER_START_X,           // Posisi X awal dari Constants
+            Constants.PLAYER_START_Y,           // Posisi Y awal dari Constants
+            Constants.PLAYER_WIDTH,             // Lebar render Player di layar (dari Constants)
+            Constants.PLAYER_HEIGHT,            // Tinggi render Player di layar (dari Constants)
+            Constants.PLAYER_INITIAL_HEARTS,    // Jumlah nyawa awal (dari Constants)
+            idleSheetPath,                      // Path ke sprite sheet idle
+            swimmingSheetPath,                  // Path ke sprite sheet swimming
+            playerSpriteFrameWidth,             // Lebar satu frame animasi
+            playerSpriteFrameHeight,            // Tinggi satu frame animasi
+            playerIdleFramesCount,              // Jumlah frame untuk animasi idle
+            playerSwimmingFramesCount,          // Jumlah frame untuk animasi swimming
+            playerFrameDelayMs                  // Delay antar frame animasi
+        );
+
+        // --- Inisialisasi Objek Lain (Net, Jar, JellyfishHandler) ---
+        net = new Net(player); // Net membutuhkan referensi ke objek Player
+
+        // PASTIKAN ASET GAMBAR UNTUK JAR ADA DI PATH YANG BENAR
+        jar = new Jar(
+            Constants.JAR_X, 
+            Constants.JAR_Y, 
+            Constants.JAR_WIDTH, 
+            Constants.JAR_HEIGHT, 
+            "/assets/images/jar_image.png" // Path ke gambar Jar
+        );
+
+        jellyfishHandler = new JellyfishHandler();
+        jellyfishHandler.reset(); // Pastikan handler ubur-ubur direset setiap game baru dimulai
+
+        // --- Reset Variabel Status Game ---
+        jellyfishInStruggle = null; // Tidak ada jellyfish yang sedang di-struggle di awal
+        remainingTimeSeconds = Constants.INITIAL_GAME_TIME_SECONDS; // Reset waktu game
+        struggleBarValue = 0; // Reset progress bar struggle
     }
     
     public void startGame(String username) {
