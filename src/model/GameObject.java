@@ -27,7 +27,7 @@ public abstract class GameObject {
     protected boolean isFacingRight_anim = true; // Untuk arah hadap sprite sheet, default kanan
 
     // Variabel statis untuk mengontrol apakah hitbox digambar atau tidak (untuk debugging)
-    public static boolean DEBUG_DRAW_HITBOX = true; // Set true untuk melihat hitbox, false untuk menyembunyikan
+    public static boolean DEBUG_DRAW_HITBOX = false;
 
     public GameObject(float x, float y, int renderWidth, int renderHeight) {
         this.x = x;

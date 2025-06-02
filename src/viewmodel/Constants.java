@@ -5,8 +5,8 @@ public class Constants {
     public static final int GAME_HEIGHT = 600; // Tinggi layar game
     
     // Player
-    public static final int PLAYER_WIDTH = 100;  // Misal, nilai saat ini adalah 60
-    public static final int PLAYER_HEIGHT = 100; // Misal, nilai saat ini adalah 60
+    public static final int PLAYER_WIDTH = 80;  // Misal, nilai saat ini adalah 60
+    public static final int PLAYER_HEIGHT = 80; // Misal, nilai saat ini adalah 60
 
     public static final int PLAYER_INITIAL_HEARTS = 3;
     public static final float PLAYER_START_X = (GAME_WIDTH - PLAYER_WIDTH) / 2f; 
