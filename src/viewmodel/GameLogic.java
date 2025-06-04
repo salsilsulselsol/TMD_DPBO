@@ -18,7 +18,9 @@ public class GameLogic implements ActionListener {
     public enum GameState {
         MENU, PLAYING, 
         HARPOON_FIRED, 
-        STRUGGLING, GAME_OVER 
+        STRUGGLING, 
+        FISH_MOVING_TO_JAR, 
+        GAME_OVER 
     }
 
     private GamePanel gamePanel;
@@ -37,7 +39,10 @@ public class GameLogic implements ActionListener {
     private int struggleBarValue;
     private long struggleStartTimeMs;
     private GameObject gameObjectInStruggle; 
+    private GameObject fishMovingToJar;      
     private Clip gameMusicClip;
+    private float fishToJarSpeed = 20.0f; 
+
 
     public GameLogic(GamePanel panel) {
         this.gamePanel = panel;
@@ -50,8 +55,8 @@ public class GameLogic implements ActionListener {
         String swimmingSheetPath = "/assets/images/swim-player.png"; 
         String shootSheetPath = "/assets/images/shoot-player.png";   
 
-        int playerSpriteFrameWidth = 128;    // Ukuran satu frame di sprite sheet Player
-        int playerSpriteFrameHeight = 128;   // Ukuran satu frame di sprite sheet Player
+        int playerSpriteFrameWidth = 128;    
+        int playerSpriteFrameHeight = 128;   
         
         int playerIdleFramesCount = 12;      
         int playerSwimmingFramesCount = 12;  
@@ -63,14 +68,14 @@ public class GameLogic implements ActionListener {
         player = new Player(
             Constants.PLAYER_START_X,      
             Constants.PLAYER_START_Y,      
-            Constants.PLAYER_WIDTH,        // Ukuran render Player di layar
-            Constants.PLAYER_HEIGHT,       // Ukuran render Player di layar
+            Constants.PLAYER_WIDTH,        
+            Constants.PLAYER_HEIGHT,       
             Constants.PLAYER_INITIAL_HEARTS, 
             idleSheetPath,                 
             swimmingSheetPath,             
             shootSheetPath,                
-            playerSpriteFrameWidth,    // Diteruskan sebagai ukuran frame sprite    
-            playerSpriteFrameHeight,   // Diteruskan sebagai ukuran frame sprite
+            playerSpriteFrameWidth,        
+            playerSpriteFrameHeight,       
             playerIdleFramesCount,         
             playerSwimmingFramesCount,     
             playerShootFramesCount,        
@@ -85,31 +90,32 @@ public class GameLogic implements ActionListener {
             Constants.JAR_Y, 
             Constants.JAR_WIDTH, 
             Constants.JAR_HEIGHT, 
-            "/assets/images/jar_image.png" 
+            "/assets/images/jar.png" 
         );
         jar.reset();
 
         entityHandler = new EntityHandler(); 
-        entityHandler.reset(); 
+        entityHandler.reset();
 
         gameObjectInStruggle = null; 
-        remainingTimeSeconds = Constants.INITIAL_GAME_TIME_SECONDS; 
+        fishMovingToJar = null; 
+        remainingTimeSeconds = Constants.INITIAL_GAME_TIME_SECONDS;
         struggleBarValue = 0; 
     }
     
     public void startGame(String username) {
         this.currentUsername = username;
-        initializeGameEntities(); // Akan memanggil player.resetMovementFlags() via konstruktor Player
+        initializeGameEntities(); 
         currentState = GameState.PLAYING;
         
-        if (gameMusicClip != null) SoundManager.stopSound(gameMusicClip); 
+        if (gameMusicClip != null) SoundManager.stopSound(gameMusicClip);
         gameMusicClip = SoundManager.playSound("assets/sounds/game_music.wav", true);
         
         if (countdownTimer != null && countdownTimer.isRunning()) {
             countdownTimer.stop();
         }
         countdownTimer = new Timer(1000, e -> { 
-            if (currentState != GameState.GAME_OVER && currentState != GameState.MENU) {
+            if (currentState != GameState.GAME_OVER && currentState != GameState.MENU && currentState != GameState.FISH_MOVING_TO_JAR) { 
                 remainingTimeSeconds--;
                 if (remainingTimeSeconds <= 0) {
                     remainingTimeSeconds = 0;
@@ -134,15 +140,17 @@ public class GameLogic implements ActionListener {
             updateHarpoonFiredState(); 
         } else if (currentState == GameState.STRUGGLING) {
             updateStrugglingState();
+        } else if (currentState == GameState.FISH_MOVING_TO_JAR) { 
+            updateFishMovingToJarState();
         }
         
-        if (currentState != GameState.MENU && currentState != GameState.GAME_OVER) {
+        if (currentState != GameState.MENU) { 
              gamePanel.repaint(); 
         }
     }
 
     private void updatePlayingState() {
-        player.update(); 
+        player.update();
         entityHandler.updateEntities(); 
     }
 
@@ -156,38 +164,36 @@ public class GameLogic implements ActionListener {
             List<GameObject> entities = entityHandler.getEntities(); 
             for (GameObject entity : entities) {
                 if (entity instanceof Fish) { 
-                    if (harpoon.getTipCollisionBox().intersects(entity.getCollisionBox())) { 
+                    if (harpoon.getTipCollisionBox().intersects(entity.getCollisionBox())) {
                         harpoon.hookObject(entity); 
                         SoundManager.playSound("assets/sounds/catch_sound.wav", false);
                         break; 
                     }
                 }
             }
-            if (!harpoon.isFiring()) { 
+            if (!harpoon.isFiring()) {
                 currentState = GameState.PLAYING;
-                 // Jika harpoon ditarik kembali tanpa mengenai, reset gerakan juga untuk antisipasi
                 if (player != null) {
                     player.resetMovementFlags();
                 }
             }
         } else { 
-            if (player.getCollisionBox().intersects(hooked.getCollisionBox())) { 
+            if (player.getCollisionBox().intersects(hooked.getCollisionBox())) {
                 startStruggle(hooked); 
             }
         }
     }
     
     private void startStruggle(GameObject caughtEntity) { 
-        // Saat struggle dimulai, input gerakan player diabaikan karena kondisi state di InputHandler
-        // Namun, untuk memastikan, kita bisa juga reset di sini.
         if (player != null) {
             player.resetMovementFlags();
         }
         currentState = GameState.STRUGGLING;
-        this.gameObjectInStruggle = caughtEntity;
+        this.gameObjectInStruggle = caughtEntity; 
+        this.fishMovingToJar = null; 
         this.struggleBarValue = 0;
         this.struggleStartTimeMs = System.currentTimeMillis();
-        entityHandler.removeEntity(caughtEntity); 
+        // entityHandler.removeEntity(caughtEntity); // Dipindahkan ke succeedStruggle sebelum animasi
     }
 
     private void updateStrugglingState() {
@@ -196,8 +202,45 @@ public class GameLogic implements ActionListener {
         }
     }
 
+    private void updateFishMovingToJarState() {
+        if (fishMovingToJar == null || jar == null) {
+            currentState = GameState.PLAYING; 
+            if (player != null) player.resetMovementFlags();
+            return;
+        }
+
+        float targetX = jar.getX() + jar.getWidth() / 2f - fishMovingToJar.getWidth() / 2f;
+        float targetY = jar.getY() + jar.getHeight() / 4f - fishMovingToJar.getHeight() / 2f; // Target sedikit ke atas dari tengah Jar
+
+        float currentX = fishMovingToJar.getX();
+        float currentY = fishMovingToJar.getY();
+
+        float dx = targetX - currentX;
+        float dy = targetY - currentY;
+        double distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < fishToJarSpeed) { 
+            if (fishMovingToJar instanceof Fish) {
+                jar.addToJar((Fish) fishMovingToJar);
+                remainingTimeSeconds += Constants.TIME_BONUS_PER_CATCH_SECONDS;
+                SoundManager.playSound("assets/sounds/success_sound.wav", false);
+            }
+            fishMovingToJar = null; 
+            currentState = GameState.PLAYING;
+            if (player != null) player.resetMovementFlags();
+        } else {
+            float moveX = (dx / (float)distance) * fishToJarSpeed;
+            float moveY = (dy / (float)distance) * fishToJarSpeed;
+            fishMovingToJar.setX(currentX + moveX);
+            fishMovingToJar.setY(currentY + moveY);
+            fishMovingToJar.update(); 
+        }
+        if (player != null) player.update();
+        entityHandler.updateEntities(); 
+    }
+
     public void handlePlayerFireHarpoon(float targetX, float targetY) { 
-        if (currentState == GameState.PLAYING && !harpoon.isFiring()) { 
+        if (currentState == GameState.PLAYING && !harpoon.isFiring()) {
             harpoon.fire(targetX, targetY); 
             if (player != null) {
                 player.playShootAnimation();
@@ -218,38 +261,42 @@ public class GameLogic implements ActionListener {
     public void handleEscapeKeyPress() {
         if (currentState == GameState.PLAYING || 
             currentState == GameState.HARPOON_FIRED ||
-            currentState == GameState.STRUGGLING) { 
+            currentState == GameState.STRUGGLING ||
+            currentState == GameState.FISH_MOVING_TO_JAR) { 
             returnToMenu(true); 
         }
     }
 
     private void succeedStruggle() {
-        if (gameObjectInStruggle != null && gameObjectInStruggle instanceof Fish) { 
-            Fish caughtFish = (Fish) gameObjectInStruggle; 
-            jar.addToJar(caughtFish); 
-            remainingTimeSeconds += Constants.TIME_BONUS_PER_CATCH_SECONDS; 
-            SoundManager.playSound("assets/sounds/success_sound.wav", false);
+        if (gameObjectInStruggle != null && gameObjectInStruggle instanceof Fish) {
+            entityHandler.removeEntity(gameObjectInStruggle); 
+            
+            this.fishMovingToJar = gameObjectInStruggle; 
+            this.gameObjectInStruggle = null; 
+            currentState = GameState.FISH_MOVING_TO_JAR; 
+        } else {
+            currentState = GameState.PLAYING;
+            if (player != null) player.resetMovementFlags();
         }
-        harpoon.finishAttempt(); 
-        gameObjectInStruggle = null;
-        currentState = GameState.PLAYING;
-        if (player != null) {
-            player.resetMovementFlags(); // Reset gerakan setelah struggle
-        }
+        harpoon.finishAttempt();
     }
 
     private void failStruggle() {
-        player.loseHeart(); 
+        player.loseHeart();
         SoundManager.playSound("assets/sounds/fail_sound.wav", false);
         
-        harpoon.finishAttempt(); 
+        harpoon.finishAttempt();
+        // Jika ingin ikan yang gagal di-struggle kembali muncul:
+        // if (gameObjectInStruggle != null && entityHandler != null) {
+        //    entityHandler.addEntity(gameObjectInStruggle); // Anda perlu metode addEntity di EntityHandler
+        // }
         gameObjectInStruggle = null;
         currentState = GameState.PLAYING;
         if (player != null) {
-            player.resetMovementFlags(); // Reset gerakan setelah struggle
+            player.resetMovementFlags(); 
         }
 
-        if (player.getHearts() <= 0) { 
+        if (player.getHearts() <= 0) {
             triggerGameOver("Nyawa Habis!");
         }
     }
@@ -260,11 +307,11 @@ public class GameLogic implements ActionListener {
 
         for (GameObject entity : currentEntities) {
             if (entity instanceof Ghost) {
-                if (player.getCollisionBox().intersects(entity.getCollisionBox())) { 
-                    player.loseHeart(); 
-                    SoundManager.playSound("assets/sounds/fail_sound.wav", false); 
+                if (player.getCollisionBox().intersects(entity.getCollisionBox())) {
+                    player.loseHeart();
+                    SoundManager.playSound("assets/sounds/fail_sound.wav", false);
                     entityHandler.removeEntity(entity); 
-                    if (player.getHearts() <= 0) { 
+                    if (player.getHearts() <= 0) {
                         triggerGameOver("Nyawa Habis karena Hantu!");
                     }
                     break; 
@@ -277,18 +324,18 @@ public class GameLogic implements ActionListener {
         if (currentState == GameState.GAME_OVER) return; 
         currentState = GameState.GAME_OVER;
         if (player != null) {
-            player.resetMovementFlags(); // Reset gerakan saat game over
+            player.resetMovementFlags(); 
         }
         gameTimerLoop.stop(); 
         if (countdownTimer != null) countdownTimer.stop(); 
-        SoundManager.stopSound(gameMusicClip); 
+        SoundManager.stopSound(gameMusicClip);
         SoundManager.playSound("assets/sounds/gameover_sound.wav", false);
         saveGameResult(); 
         gamePanel.repaint(); 
         JOptionPane.showMessageDialog(gamePanel, 
             message + "\n\nUsername: " + currentUsername + 
-            "\nSkor Akhir: " + jar.getTotalScore() + 
-            "\nIkan Terkumpul: " + jar.getCollectedCount(), 
+            "\nSkor Akhir: " + jar.getTotalScore() +
+            "\nIkan Terkumpul: " + jar.getCollectedCount(),
             "Game Over", 
             JOptionPane.INFORMATION_MESSAGE);
         returnToMenu(false); 
@@ -296,9 +343,9 @@ public class GameLogic implements ActionListener {
 
     private void saveGameResult() {
         if (currentUsername != null && !currentUsername.isEmpty() && jar != null) {
-            try (TableHasil th = new TableHasil()) { 
-                GameData gameData = new GameData(currentUsername, jar.getTotalScore(), jar.getCollectedCount()); 
-                th.insertOrUpdateHasil(gameData); 
+            try (TableHasil th = new TableHasil()) {
+                GameData gameData = new GameData(currentUsername, jar.getTotalScore(), jar.getCollectedCount());
+                th.insertOrUpdateHasil(gameData);
             } catch (Exception ex) { 
                 System.err.println("Error saat menyimpan skor: " + ex.getMessage());
                 ex.printStackTrace();
@@ -311,34 +358,37 @@ public class GameLogic implements ActionListener {
             saveGameResult();
         }
         if (player != null) {
-            player.resetMovementFlags(); // Reset gerakan saat kembali ke menu
+            player.resetMovementFlags(); 
         }
         gameTimerLoop.stop();
         if (countdownTimer != null) countdownTimer.stop();
         currentState = GameState.MENU; 
-        SoundManager.stopSound(gameMusicClip); 
+        SoundManager.stopSound(gameMusicClip);
         JFrame currentFrame = (JFrame) SwingUtilities.getWindowAncestor(gamePanel);
         if (currentFrame != null) {
             currentFrame.dispose(); 
         }
         SwingUtilities.invokeLater(() -> {
-            MenuScreen menu = new MenuScreen(); 
+            MenuScreen menu = new MenuScreen();
             menu.setVisible(true);
         });
     }
 
     public void renderGame(Graphics g) {
         entityHandler.renderEntities(g); 
-        player.render(g); 
+        player.render(g);
         harpoon.render(g); 
         
-        if (currentState == GameState.STRUGGLING) {
+        if (currentState == GameState.STRUGGLING || currentState == GameState.FISH_MOVING_TO_JAR) {
             if (jar != null) {
-                jar.render(g); 
+                jar.render(g);
             }
-            if (gameObjectInStruggle != null) {
-                gameObjectInStruggle.render(g); 
-            }
+        }
+        
+        if (currentState == GameState.STRUGGLING && gameObjectInStruggle != null) {
+            gameObjectInStruggle.render(g); 
+        } else if (currentState == GameState.FISH_MOVING_TO_JAR && fishMovingToJar != null) {
+            fishMovingToJar.render(g); 
         }
     }
 
@@ -348,6 +398,6 @@ public class GameLogic implements ActionListener {
     public Jar getJar() { return jar; } 
     public float getStruggleProgress() { 
         if (currentState != GameState.STRUGGLING) return 0f;
-        return Math.min(1.0f, (float) struggleBarValue / Constants.STRUGGLE_BAR_MAX_VALUE); 
+        return Math.min(1.0f, (float) struggleBarValue / Constants.STRUGGLE_BAR_MAX_VALUE);
     }
 }

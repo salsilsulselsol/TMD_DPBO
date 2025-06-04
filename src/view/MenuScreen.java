@@ -1,55 +1,52 @@
 package view;
 
-import model.TableHasil;
-import viewmodel.InputHandler;
-import viewmodel.SoundManager;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.net.URL;
 import javax.sound.sampled.Clip;
-import java.net.URL; // Untuk background image
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
+import model.TableHasil;
+import viewmodel.FontManager;
+import viewmodel.InputHandler;
+import viewmodel.SoundManager;
 
 public class MenuScreen extends JFrame {
     private JTable scoreTable;
     private JTextField usernameField;
     private JButton playButton, quitButton;
-    private JPanel mainPanel; // Panel utama yang akan jadi content pane
+    private JPanel mainPanel; 
     private Clip menuMusicClip;
     private String selectedUsernameFromTable = "";
 
     public MenuScreen() {
-        setTitle("Collect the Skill Balls - Menu"); // Sesuai PDF [cite: 31, 77]
+        setTitle("Collect the Skill Balls - Menu");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         
         mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(new EmptyBorder(20, 30, 20, 30));
 
-        // Coba load background image untuk mainPanel
         try {
-            URL bgUrl = getClass().getResource("/assets/images/background_menu.png"); // PASTIKAN ASET ADA
+            URL bgUrl = getClass().getResource("/assets/images/background_menu.png");
             if (bgUrl != null) {
                 JLabel backgroundLabel = new JLabel(new ImageIcon(bgUrl));
-                backgroundLabel.setLayout(new BorderLayout()); // Agar bisa menampung komponen lain
-                setContentPane(backgroundLabel); // Jadikan JLabel ini content pane
+                backgroundLabel.setLayout(new BorderLayout()); 
+                setContentPane(backgroundLabel); 
                 
-                // Ambil content pane yang baru (JLabel) dan set agar bisa menampung komponen UI
                 Container layeredPane = getContentPane(); 
-                layeredPane.setLayout(new BorderLayout()); // Atur layout untuk JLabel
+                layeredPane.setLayout(new BorderLayout()); 
                 
-                // Buat panel transparan untuk menampung UI agar background terlihat
                 mainPanel = new JPanel(new BorderLayout(10, 10));
                 mainPanel.setBorder(new EmptyBorder(20, 30, 20, 30));
-                mainPanel.setOpaque(false); // Penting agar background JLabel terlihat
+                mainPanel.setOpaque(false); 
                 layeredPane.add(mainPanel, BorderLayout.CENTER);
 
             } else {
                 System.err.println("Background menu tidak ditemukan, menggunakan warna solid.");
-                mainPanel.setBackground(new Color(170, 210, 250)); // Warna fallback
+                mainPanel.setBackground(new Color(170, 210, 250)); 
                 setContentPane(mainPanel);
             }
         } catch (Exception e) {
@@ -58,56 +55,51 @@ public class MenuScreen extends JFrame {
             setContentPane(mainPanel);
         }
 
-        // Title
-        JLabel titleLabel = new JLabel("COLLECT THE SKILL BALLS", SwingConstants.CENTER); // Sesuai PDF [cite: 31, 77]
-        titleLabel.setFont(new Font("Comic Sans MS", Font.BOLD, 38));
-        titleLabel.setForeground(new Color(255, 215, 0)); // Warna Emas
+        JLabel titleLabel = new JLabel("COLLECT THE SKILL BALLS", SwingConstants.CENTER);
+        titleLabel.setFont(FontManager.getPressStart2PRegular(28f)); // Menggunakan Font Kustom
+        titleLabel.setForeground(new Color(255, 215, 0)); 
         mainPanel.add(titleLabel, BorderLayout.NORTH);
 
-        // Center Panel: Username input dan Tabel Skor
         JPanel centerContentPanel = new JPanel(new BorderLayout(10, 15));
-        centerContentPanel.setOpaque(false); // Transparan agar background utama terlihat
+        centerContentPanel.setOpaque(false); 
         
         JPanel usernameInputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         usernameInputPanel.setOpaque(false);
         JLabel usernameLabelText = new JLabel("Username:");
-        usernameLabelText.setForeground(Color.WHITE); // Sesuaikan warna teks
-        usernameLabelText.setFont(new Font("Arial", Font.BOLD, 14));
+        usernameLabelText.setForeground(Color.WHITE); 
+        usernameLabelText.setFont(FontManager.getPressStart2PRegular(10f)); // Menggunakan Font Kustom
         usernameInputPanel.add(usernameLabelText);
         usernameField = new JTextField(20);
-        usernameField.setFont(new Font("Arial", Font.PLAIN, 14));
+        usernameField.setFont(FontManager.getPressStart2PRegular(10f)); // Menggunakan Font Kustom
         usernameInputPanel.add(usernameField);
         centerContentPanel.add(usernameInputPanel, BorderLayout.NORTH);
 
-        // Tabel Skor
-        try (TableHasil th = new TableHasil()) { // Try-with-resources untuk auto-close DB connection
-            scoreTable = new JTable(th.getAllHasilForTable());
+        try (TableHasil th = new TableHasil()) { //
+            scoreTable = new JTable(th.getAllHasilForTable()); //
         } catch (Exception e) {
             e.printStackTrace();
             scoreTable = new JTable(new DefaultTableModel(new Object[]{"Username", "Skor", "Count"}, 0));
             JOptionPane.showMessageDialog(this, "Gagal memuat data skor dari database: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
         }
-        JScrollPane tableScrollPane = new JScrollPane(scoreTable); // Scroll jika data banyak [cite: 34, 80]
-        // Atur tampilan tabel agar lebih menyatu dengan tema (opsional)
+        JScrollPane tableScrollPane = new JScrollPane(scoreTable);
         tableScrollPane.getViewport().setOpaque(false);
         tableScrollPane.setOpaque(false);
         scoreTable.setOpaque(false);
-        scoreTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
-        // ((javax.swing.table.DefaultTableCellRenderer)scoreTable.getDefaultRenderer(Object.class)).setOpaque(false); // Membuat sel transparan
+        scoreTable.getTableHeader().setFont(FontManager.getPressStart2PRegular(9f)); // Menggunakan Font Kustom
+        scoreTable.setFont(FontManager.getPressStart2PRegular(8f)); // Menggunakan Font Kustom
 
         centerContentPanel.add(tableScrollPane, BorderLayout.CENTER);
         mainPanel.add(centerContentPanel, BorderLayout.CENTER);
 
-        // Bottom Panel: Tombol dan Kredit
-        JPanel southAreaPanel = new JPanel(new BorderLayout(0, 5)); // Panel untuk tombol dan kredit
+        JPanel southAreaPanel = new JPanel(new BorderLayout(0, 5)); 
         southAreaPanel.setOpaque(false);
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 40, 10));
         buttonsPanel.setOpaque(false);
-        playButton = new JButton("Play"); // Sesuai PDF [cite: 31, 77]
-        quitButton = new JButton("Quit"); // Sesuai PDF [cite: 31, 77]
+        playButton = new JButton("Play");
+        quitButton = new JButton("Quit");
         Dimension buttonDim = new Dimension(130, 45);
-        Font buttonFont = new Font("Arial", Font.BOLD, 16);
+        Font buttonFont = FontManager.getPressStart2PRegular(12f); // Menggunakan Font Kustom
         playButton.setPreferredSize(buttonDim);
         playButton.setFont(buttonFont);
         quitButton.setPreferredSize(buttonDim);
@@ -116,19 +108,20 @@ public class MenuScreen extends JFrame {
         buttonsPanel.add(quitButton);
         southAreaPanel.add(buttonsPanel, BorderLayout.CENTER);
         
-        JLabel creditTextLabel = new JLabel("Game by [Nama Anda] - Assets credited in-game/docs.", SwingConstants.CENTER); // Kredit aset [cite: 44, 90]
-        creditTextLabel.setFont(new Font("Arial", Font.ITALIC, 11));
-        creditTextLabel.setForeground(Color.LIGHT_GRAY); // Warna kredit
+        // Anda bisa mengganti "[Nama Anda]" dengan nama Anda
+        JLabel creditTextLabel = new JLabel("Game by Faisal N.Q. - Assets credited in-game/docs.", SwingConstants.CENTER);
+        creditTextLabel.setFont(FontManager.getPressStart2PRegular(7f).deriveFont(Font.ITALIC)); // Menggunakan Font Kustom
+        creditTextLabel.setForeground(Color.LIGHT_GRAY); 
         southAreaPanel.add(creditTextLabel, BorderLayout.SOUTH);
         
         mainPanel.add(southAreaPanel, BorderLayout.SOUTH);
 
         addListeners();
 
-        menuMusicClip = SoundManager.playSound("assets/sounds/menu_music.wav", true); // Musik menu (bonus) [cite: 45, 91]
+        menuMusicClip = SoundManager.playSound("assets/sounds/menu_music.wav", true); //
 
         pack();
-        setLocationRelativeTo(null); // Tampilkan di tengah layar
+        setLocationRelativeTo(null); 
     }
 
     private void addListeners() {
@@ -157,17 +150,13 @@ public class MenuScreen extends JFrame {
             }
         }
         
-        // PDF: "Username disimpan jika tombol Play diklik"[cite: 33, 79]. 
-        // Penyimpanan skor aktual terjadi saat game berakhir atau keluar.
-        // Di sini, username hanya diteruskan ke game logic.
-        
-        if (menuMusicClip != null) SoundManager.stopSound(menuMusicClip);
+        if (menuMusicClip != null) SoundManager.stopSound(menuMusicClip); //
         this.setVisible(false);
         this.dispose();
 
         GamePanel gamePanel = new GamePanel();
-        InputHandler inputHandler = new InputHandler(gamePanel.getGameLogic());
-        new GameWindow(gamePanel, inputHandler); // Buat window game
-        gamePanel.getGameLogic().startGame(username); // Mulai game
+        InputHandler inputHandler = new InputHandler(gamePanel.getGameLogic()); //
+        new GameWindow(gamePanel, inputHandler); //
+        gamePanel.getGameLogic().startGame(username); //
     }
 }

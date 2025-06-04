@@ -18,11 +18,11 @@ public class Constants {
     public static final int MAX_JELLYFISH_ON_SCREEN = 7; // Jumlah maksimal di layar
 
     // Jar (Keranjang)
-    public static final int JAR_WIDTH = 80;
-    public static final int JAR_HEIGHT = 100;
+    public static final int JAR_WIDTH = 140;
+    public static final int JAR_HEIGHT = 168;
     // Posisi Jar disesuaikan agar terlihat baik
     public static final float JAR_X = Constants.GAME_WIDTH - JAR_WIDTH - 25; 
-    public static final float JAR_Y = (Constants.GAME_HEIGHT - JAR_HEIGHT) / 2f - 30;
+    public static final float JAR_Y = (Constants.GAME_HEIGHT - JAR_HEIGHT) / 2f;
 
     // Game Timer
     public static final int INITIAL_GAME_TIME_SECONDS = 90;    // Durasi game
