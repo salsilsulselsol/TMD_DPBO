@@ -41,7 +41,7 @@ public class GameLogic implements ActionListener {
     private GameObject gameObjectInStruggle; 
     private GameObject fishMovingToJar;      
     private Clip gameMusicClip;
-    private float fishToJarSpeed = 20.0f; 
+    private float fishToJarSpeed = 25.0f;
 
 
     public GameLogic(GamePanel panel) {
@@ -82,7 +82,6 @@ public class GameLogic implements ActionListener {
             playerFrameDelayMs,
             playerShootFrameDelayMs
         );
-        // player.resetMovementFlags(); // Sudah dipanggil di konstruktor Player
 
         harpoon = new Harpoon(player); 
         jar = new Jar(
@@ -193,7 +192,6 @@ public class GameLogic implements ActionListener {
         this.fishMovingToJar = null; 
         this.struggleBarValue = 0;
         this.struggleStartTimeMs = System.currentTimeMillis();
-        // entityHandler.removeEntity(caughtEntity); // Dipindahkan ke succeedStruggle sebelum animasi
     }
 
     private void updateStrugglingState() {
@@ -210,7 +208,7 @@ public class GameLogic implements ActionListener {
         }
 
         float targetX = jar.getX() + jar.getWidth() / 2f - fishMovingToJar.getWidth() / 2f;
-        float targetY = jar.getY() + jar.getHeight() / 4f - fishMovingToJar.getHeight() / 2f; // Target sedikit ke atas dari tengah Jar
+        float targetY = jar.getY() + jar.getHeight() / 4f - fishMovingToJar.getHeight() / 2f; 
 
         float currentX = fishMovingToJar.getX();
         float currentY = fishMovingToJar.getY();
@@ -251,7 +249,15 @@ public class GameLogic implements ActionListener {
     
     public void handleSpaceBarPress() {
         if (currentState == GameState.STRUGGLING) {
-            struggleBarValue += Constants.STRUGGLE_TAP_VALUE;
+            float tapEffectiveness = Constants.STRUGGLE_TAP_VALUE;
+            if (gameObjectInStruggle instanceof Fish) {
+                Fish strugglingFish = (Fish) gameObjectInStruggle;
+                if (strugglingFish.getStruggleFactor() > 0) {
+                    tapEffectiveness /= strugglingFish.getStruggleFactor();
+                }
+            }
+            struggleBarValue += tapEffectiveness;
+
             if (struggleBarValue >= Constants.STRUGGLE_BAR_MAX_VALUE) {
                 succeedStruggle();
             }
@@ -286,10 +292,6 @@ public class GameLogic implements ActionListener {
         SoundManager.playSound("assets/sounds/fail_sound.wav", false);
         
         harpoon.finishAttempt();
-        // Jika ingin ikan yang gagal di-struggle kembali muncul:
-        // if (gameObjectInStruggle != null && entityHandler != null) {
-        //    entityHandler.addEntity(gameObjectInStruggle); // Anda perlu metode addEntity di EntityHandler
-        // }
         gameObjectInStruggle = null;
         currentState = GameState.PLAYING;
         if (player != null) {

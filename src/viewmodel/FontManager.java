@@ -11,8 +11,7 @@ public class FontManager {
 
     static {
         try {
-            // Path ke file font Anda, relatif terhadap classpath (folder src)
-            String fontPath = "/assets/fonts/PressStart2P-Regular.ttf"; // Sesuaikan jika nama file atau path berbeda
+            String fontPath = "/assets/fonts/PressStart2P-Regular.ttf";
             InputStream is = FontManager.class.getResourceAsStream(fontPath);
             
             if (is == null) {
