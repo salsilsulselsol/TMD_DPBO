@@ -248,19 +248,54 @@ public class GameLogic implements ActionListener {
     }
     
     public void handleSpaceBarPress() {
-        if (currentState == GameState.STRUGGLING) {
-            float tapEffectiveness = Constants.STRUGGLE_TAP_VALUE;
-            if (gameObjectInStruggle instanceof Fish) {
-                Fish strugglingFish = (Fish) gameObjectInStruggle;
-                if (strugglingFish.getStruggleFactor() > 0) {
-                    tapEffectiveness /= strugglingFish.getStruggleFactor();
-                }
-            }
-            struggleBarValue += tapEffectiveness;
+        if (currentState == GameState.PLAYING) {
+            // Jika sedang bermain, tampilkan konfirmasi untuk kembali ke menu
+            showPauseConfirmation();
+        } else if (currentState == GameState.STRUGGLING) {
+            // Jika sedang struggle, jalankan logika untuk struggle
+            performStruggleAction();
+        }
+    }
 
-            if (struggleBarValue >= Constants.STRUGGLE_BAR_MAX_VALUE) {
-                succeedStruggle();
+    private void performStruggleAction() {
+        float tapEffectiveness = Constants.STRUGGLE_TAP_VALUE;
+        if (gameObjectInStruggle instanceof Fish) {
+            Fish strugglingFish = (Fish) gameObjectInStruggle;
+            if (strugglingFish.getStruggleFactor() > 0) {
+                tapEffectiveness /= strugglingFish.getStruggleFactor();
             }
+        }
+        struggleBarValue += tapEffectiveness;
+
+        if (struggleBarValue >= Constants.STRUGGLE_BAR_MAX_VALUE) {
+            succeedStruggle();
+        }
+    }
+
+    private void showPauseConfirmation() {
+        // 1. Jeda semua timer agar permainan berhenti total
+        gameTimerLoop.stop();
+        if (countdownTimer != null) countdownTimer.stop();
+
+        // 2. Tampilkan dialog konfirmasi
+        int choice = JOptionPane.showConfirmDialog(
+            gamePanel,
+            "Apakah Anda yakin ingin kembali ke Menu Utama?",
+            "Jeda Permainan",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE
+        );
+
+        // 3. Proses pilihan pengguna
+        if (choice == JOptionPane.YES_OPTION) {
+            // Jika "Yes", kembali ke menu (simpan skor saat ini)
+            returnToMenu(true);
+        } else {
+            // Jika "No" atau dialog ditutup, lanjutkan permainan
+            gameTimerLoop.start();
+            if (countdownTimer != null) countdownTimer.start();
+            // Penting: Minta fokus kembali ke panel game agar input berfungsi lagi
+            gamePanel.requestFocusInWindow();
         }
     }
 
