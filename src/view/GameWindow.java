@@ -7,7 +7,7 @@ public class GameWindow {
     private JFrame frame;
 
     public GameWindow(GamePanel gamePanel, InputHandler inputHandler) {
-        frame = new JFrame("Collect the Skill Balls | Playing...");
+        frame = new JFrame("Monster Fish Hunt | Playing...");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
         

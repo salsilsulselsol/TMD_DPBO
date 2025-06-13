@@ -18,12 +18,9 @@ import viewmodel.GameLogic;
 public class GamePanel extends JPanel {
     private GameLogic gameLogic;
 
-    // Variabel untuk gambar latar belakang
     private Image bgFar;
     private Image bgSand;
     private Image bgForeground;
-
-    // --- BARU: Variabel untuk gambar ikon hati ---
     private Image heartFullImage;
     private Image heartEmptyImage;
 
@@ -31,53 +28,31 @@ public class GamePanel extends JPanel {
         setPreferredSize(new Dimension(Constants.GAME_WIDTH, Constants.GAME_HEIGHT));
         setFocusable(true);
         setBackground(new Color(0, 0, 50));
-
-        loadAssets(); // Memanggil metode untuk memuat semua aset
-
-        this.gameLogic = new GameLogic(this);
+        
+        // GamePanel membuat GameLogic-nya sendiri, ini cara yang lebih stabil
+        this.gameLogic = new GameLogic(this); 
+        
+        loadAssets();
     }
 
-    // --- DIMODIFIKASI: Metode untuk memuat semua aset gambar ---
     private void loadAssets() {
         try {
             URL farUrl = getClass().getResource("/assets/images/far.png");
-            if (farUrl != null) {
-                bgFar = new ImageIcon(farUrl).getImage();
-            } else {
-                System.err.println("Aset tidak ditemukan: /assets/images/far.png");
-            }
-
+            if (farUrl != null) bgFar = new ImageIcon(farUrl).getImage();
+            
             URL sandUrl = getClass().getResource("/assets/images/sand.png");
-            if (sandUrl != null) {
-                bgSand = new ImageIcon(sandUrl).getImage();
-            } else {
-                System.err.println("Aset tidak ditemukan: /assets/images/sand.png");
-            }
-
+            if (sandUrl != null) bgSand = new ImageIcon(sandUrl).getImage();
+            
             URL fgUrl = getClass().getResource("/assets/images/foregound-merged.png");
-            if (fgUrl != null) {
-                bgForeground = new ImageIcon(fgUrl).getImage();
-            } else {
-                System.err.println("Aset tidak ditemukan: /assets/images/foregound-merged.png");
-            }
+            if (fgUrl != null) bgForeground = new ImageIcon(fgUrl).getImage();
 
-            // --- BARU: Memuat aset ikon hati ---
             URL heartFullUrl = getClass().getResource("/assets/images/heart-full.png");
-            if (heartFullUrl != null) {
-                heartFullImage = new ImageIcon(heartFullUrl).getImage();
-            } else {
-                System.err.println("Aset tidak ditemukan: /assets/images/heart-full.png");
-            }
+            if (heartFullUrl != null) heartFullImage = new ImageIcon(heartFullUrl).getImage();
 
             URL heartEmptyUrl = getClass().getResource("/assets/images/heart-empty.png");
-            if (heartEmptyUrl != null) {
-                heartEmptyImage = new ImageIcon(heartEmptyUrl).getImage();
-            } else {
-                System.err.println("Aset tidak ditemukan: /assets/images/heart-empty.png");
-            }
+            if (heartEmptyUrl != null) heartEmptyImage = new ImageIcon(heartEmptyUrl).getImage();
 
         } catch (Exception e) {
-            System.err.println("Error saat memuat aset: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -94,12 +69,8 @@ public class GamePanel extends JPanel {
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
 
-        if (bgFar != null) {
-            g2d.drawImage(bgFar, 0, 0, getWidth(), getHeight(), this);
-        }
-        if (bgSand != null) {
-            g2d.drawImage(bgSand, 0, 0, getWidth(), getHeight(), this);
-        }
+        if (bgFar != null) g2d.drawImage(bgFar, 0, 0, getWidth(), getHeight(), this);
+        if (bgSand != null) g2d.drawImage(bgSand, 0, 0, getWidth(), getHeight(), this);
 
         if (gameLogic != null) {
             gameLogic.renderGame(g2d);
@@ -117,43 +88,40 @@ public class GamePanel extends JPanel {
         Toolkit.getDefaultToolkit().sync();
     }
 
-    // --- DIMODIFIKASI: Metode untuk menggambar UI ---
     private void drawUI(Graphics2D g2d) {
+        // ... (seluruh isi metode drawUI tetap sama seperti sebelumnya, tidak perlu diubah)
         if (gameLogic == null) return;
 
         g2d.setFont(FontManager.getPressStart2PRegular(12f));
         g2d.setColor(new Color(255, 230, 150));
 
-        if (gameLogic.getCurrentState() != GameLogic.GameState.MENU) {
-            if (gameLogic.getJar() != null) {
+        if (gameLogic.getCurrentState() != GameLogic.GameState.MENU && gameLogic.getCurrentState() != GameLogic.GameState.GAME_OVER) {
+             if (gameLogic.getJar() != null) {
                 String scoreText = "Skor: " + gameLogic.getJar().getTotalScore();
                 String countText = "Ikan: " + gameLogic.getJar().getCollectedCount();
                 g2d.drawString(scoreText, 25, 40);
                 g2d.drawString(countText, 25, 70);
             }
-        }
+            String timeText = "Waktu: " + gameLogic.getRemainingTime();
+            FontMetrics fm = g2d.getFontMetrics();
+            int timeTextWidth = fm.stringWidth(timeText);
+            g2d.drawString(timeText, Constants.GAME_WIDTH - timeTextWidth - 25, 40);
 
-        String timeText = "Waktu: " + gameLogic.getRemainingTime();
-        FontMetrics fm = g2d.getFontMetrics();
-        int timeTextWidth = fm.stringWidth(timeText);
-        g2d.drawString(timeText, Constants.GAME_WIDTH - timeTextWidth - 25, 40);
-
-        // --- BARU: Logika untuk menggambar ikon hati ---
-        if (gameLogic.getPlayer() != null && heartFullImage != null && heartEmptyImage != null) {
-            int currentHearts = gameLogic.getPlayer().getHearts();
-            int maxHearts = Constants.PLAYER_INITIAL_HEARTS;
-            int heartSize = 45;
-            int padding = -3;
-            int margin = 15;
-
-            for (int i = 0; i < maxHearts; i++) {
-                int x = Constants.GAME_WIDTH - margin - (i + 1) * (heartSize + padding);
+            if (gameLogic.getPlayer() != null && heartFullImage != null && heartEmptyImage != null) {
+                int currentHearts = gameLogic.getPlayer().getHearts();
+                int maxHearts = Constants.PLAYER_INITIAL_HEARTS;
+                int heartSize = 45;
+                int padding = -3;
+                int margin = 15;
                 int y = 40;
 
-                if (i < currentHearts) {
-                    g2d.drawImage(heartFullImage, x, y, heartSize, heartSize, this);
-                } else {
-                    g2d.drawImage(heartEmptyImage, x, y, heartSize, heartSize, this);
+                for (int i = 0; i < maxHearts; i++) {
+                    int x = Constants.GAME_WIDTH - margin - (i + 1) * (heartSize + padding);
+                    if (i < currentHearts) {
+                        g2d.drawImage(heartFullImage, x, y, heartSize, heartSize, this);
+                    } else {
+                        g2d.drawImage(heartEmptyImage, x, y, heartSize, heartSize, this);
+                    }
                 }
             }
         }
@@ -172,28 +140,62 @@ public class GamePanel extends JPanel {
             g2d.setColor(new Color(30, 220, 30));
             g2d.fillRoundRect(barX + 2, barY + 2, (int)((barWidth - 4) * progress), barHeight - 4, 10, 10);
 
+            long startTime = gameLogic.getStruggleStartTimeMs();
+            if (startTime > 0) {
+                long elapsedTime = System.currentTimeMillis() - startTime;
+                float remainingSeconds = (Constants.STRUGGLE_TIME_LIMIT_MS - elapsedTime) / 1000.0f;
+                remainingSeconds = Math.max(0.0f, remainingSeconds);
+
+                String countdownText = String.format("%.1f", remainingSeconds);
+
+                g2d.setFont(FontManager.getPressStart2PRegular(16f));
+                g2d.setColor(Color.ORANGE);
+                FontMetrics fmCountdown = g2d.getFontMetrics();
+                int countdownWidth = fmCountdown.stringWidth(countdownText);
+                g2d.drawString(countdownText, barX + (barWidth - countdownWidth) / 2, barY - 45);
+            }
+            
             g2d.setFont(FontManager.getPressStart2PRegular(10f));
             g2d.setColor(Color.WHITE);
-            String strugglePrompt = "TEKAN SPACE SEKUATNYA!";
+            String strugglePrompt = "TEKAN Q & E BERGANTIAN!";
             FontMetrics fmStruggle = g2d.getFontMetrics();
             int promptWidth = fmStruggle.stringWidth(strugglePrompt);
-            g2d.drawString(strugglePrompt, barX + (barWidth - promptWidth) / 2, barY - fmStruggle.getDescent() - 5);
+            g2d.drawString(strugglePrompt, barX + (barWidth - promptWidth) / 2, barY - 20);
         }
 
         if (gameLogic.getCurrentState() == GameLogic.GameState.GAME_OVER) {
             g2d.setColor(new Color(0, 0, 0, 190));
-            g2d.fillRect(0, Constants.GAME_HEIGHT / 2 - 70, Constants.GAME_WIDTH, 140);
+            g2d.fillRect(0, 0, Constants.GAME_WIDTH, Constants.GAME_HEIGHT);
+
             g2d.setFont(FontManager.getPressStart2PRegular(40f));
             g2d.setColor(new Color(255, 50, 50));
             String gameOverMsg = "GAME OVER";
             FontMetrics fmGameOver = g2d.getFontMetrics();
             int msgWidth = fmGameOver.stringWidth(gameOverMsg);
-            int textAscent = fmGameOver.getAscent();
-            int textDescent = fmGameOver.getDescent();
-            int textHeight = textAscent + textDescent;
-            g2d.drawString(gameOverMsg,
-                    (Constants.GAME_WIDTH - msgWidth) / 2,
-                    Constants.GAME_HEIGHT / 2 - (textHeight / 2) + textAscent - 5);
+            g2d.drawString(gameOverMsg, (Constants.GAME_WIDTH - msgWidth) / 2, Constants.GAME_HEIGHT / 2 - 100);
+
+            g2d.setFont(FontManager.getPressStart2PRegular(14f));
+            g2d.setColor(Color.WHITE);
+            
+            String reasonMsg = gameLogic.getGameOverMessage();
+            FontMetrics fmReason = g2d.getFontMetrics();
+            int reasonWidth = fmReason.stringWidth(reasonMsg);
+            g2d.drawString(reasonMsg, (Constants.GAME_WIDTH - reasonWidth) / 2, Constants.GAME_HEIGHT / 2 - 50);
+
+            String username = "Username: " + gameLogic.getUsername();
+            String finalScore = "Skor Akhir: " + gameLogic.getJar().getTotalScore();
+            String finalCount = "Ikan Terkumpul: " + gameLogic.getJar().getCollectedCount();
+
+            FontMetrics fmDetails = g2d.getFontMetrics();
+            g2d.drawString(username, (Constants.GAME_WIDTH - fmDetails.stringWidth(username)) / 2, Constants.GAME_HEIGHT / 2 + 20);
+            g2d.drawString(finalScore, (Constants.GAME_WIDTH - fmDetails.stringWidth(finalScore)) / 2, Constants.GAME_HEIGHT / 2 + 50);
+            g2d.drawString(finalCount, (Constants.GAME_WIDTH - fmDetails.stringWidth(finalCount)) / 2, Constants.GAME_HEIGHT / 2 + 80);
+            
+            g2d.setFont(FontManager.getPressStart2PRegular(12f));
+            g2d.setColor(Color.WHITE);
+            String skipMsg = "Tekan SPACE untuk Kembali ke Menu";
+            int skipMsgWidth = g2d.getFontMetrics().stringWidth(skipMsg);
+            g2d.drawString(skipMsg, (Constants.GAME_WIDTH - skipMsgWidth) / 2, Constants.GAME_HEIGHT - 50);
         }
     }
 }

@@ -1,5 +1,6 @@
 import javax.swing.SwingUtilities;
 import view.MenuScreen;
+import viewmodel.SoundManager;
 
 public class Main {
     /*
@@ -11,6 +12,7 @@ public class Main {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
+            SoundManager.init();
             MenuScreen menu = new MenuScreen();
             menu.setVisible(true);
         });

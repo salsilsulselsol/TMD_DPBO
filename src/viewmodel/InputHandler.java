@@ -21,7 +21,7 @@ public class InputHandler extends MouseAdapter {
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (e.getButton() == MouseEvent.BUTTON1) { //
+        if (e.getButton() == MouseEvent.BUTTON1) {
              if (gameLogic.getCurrentState() == GameLogic.GameState.PLAYING) { 
                 gameLogic.handlePlayerFireHarpoon(e.getX(), e.getY()); 
             }
@@ -37,12 +37,20 @@ public class InputHandler extends MouseAdapter {
 
         @Override
         public void keyPressed(KeyEvent e) {
-            if (gameLogic.getCurrentState() == GameLogic.GameState.GAME_OVER || 
-                gameLogic.getCurrentState() == GameLogic.GameState.MENU) {
+            // --- DIMODIFIKASI: Izinkan input spasi saat Game Over ---
+            if (gameLogic.getCurrentState() == GameLogic.GameState.GAME_OVER) {
+                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+                    gameLogic.skipGameOverDelay();
+                }
+                return; // Input lain diabaikan saat Game Over
+            }
+            // -----------------------------------------------------------
+
+            if (gameLogic.getCurrentState() == GameLogic.GameState.MENU) {
                 return;
             }
 
-            Player currentPlayer = gameLogic.getPlayer(); //
+            Player currentPlayer = gameLogic.getPlayer();
             if (currentPlayer == null) return; 
 
             int key = e.getKeyCode();
@@ -50,15 +58,19 @@ public class InputHandler extends MouseAdapter {
             if (gameLogic.getCurrentState() == GameLogic.GameState.PLAYING || 
                 gameLogic.getCurrentState() == GameLogic.GameState.HARPOON_FIRED) { 
                 switch (key) {
-                    case KeyEvent.VK_W: case KeyEvent.VK_UP:    currentPlayer.setMoveUp(true); break;
-                    case KeyEvent.VK_S: case KeyEvent.VK_DOWN:  currentPlayer.setMoveDown(true); break;
-                    case KeyEvent.VK_A: case KeyEvent.VK_LEFT:  currentPlayer.setMoveLeft(true); break;
-                    case KeyEvent.VK_D: case KeyEvent.VK_RIGHT: currentPlayer.setMoveRight(true); break;
+                    case KeyEvent.VK_W, KeyEvent.VK_UP -> currentPlayer.setMoveUp(true);
+                    case KeyEvent.VK_S, KeyEvent.VK_DOWN -> currentPlayer.setMoveDown(true);
+                    case KeyEvent.VK_A, KeyEvent.VK_LEFT -> currentPlayer.setMoveLeft(true);
+                    case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> currentPlayer.setMoveRight(true);
                 }
             }
 
             if (key == KeyEvent.VK_SPACE) { 
                 gameLogic.handleSpaceBarPress(); 
+            }
+            
+            if (key == KeyEvent.VK_Q || key == KeyEvent.VK_E) {
+                gameLogic.handleStruggleKeyPress(key);
             }
 
             if (key == KeyEvent.VK_ESCAPE) {
@@ -73,17 +85,17 @@ public class InputHandler extends MouseAdapter {
                 return;
             }
 
-            Player currentPlayer = gameLogic.getPlayer(); //
+            Player currentPlayer = gameLogic.getPlayer();
             if (currentPlayer == null) return;
 
             int key = e.getKeyCode();
             if (gameLogic.getCurrentState() == GameLogic.GameState.PLAYING || 
                 gameLogic.getCurrentState() == GameLogic.GameState.HARPOON_FIRED) { 
                 switch (key) {
-                    case KeyEvent.VK_W: case KeyEvent.VK_UP:    currentPlayer.setMoveUp(false); break;
-                    case KeyEvent.VK_S: case KeyEvent.VK_DOWN:  currentPlayer.setMoveDown(false); break;
-                    case KeyEvent.VK_A: case KeyEvent.VK_LEFT:  currentPlayer.setMoveLeft(false); break;
-                    case KeyEvent.VK_D: case KeyEvent.VK_RIGHT: currentPlayer.setMoveRight(false); break;
+                    case KeyEvent.VK_W, KeyEvent.VK_UP -> currentPlayer.setMoveUp(false);
+                    case KeyEvent.VK_S, KeyEvent.VK_DOWN -> currentPlayer.setMoveDown(false);
+                    case KeyEvent.VK_A, KeyEvent.VK_LEFT -> currentPlayer.setMoveLeft(false);
+                    case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> currentPlayer.setMoveRight(false);
                 }
             }
         }

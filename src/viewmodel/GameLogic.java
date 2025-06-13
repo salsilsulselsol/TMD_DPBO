@@ -3,6 +3,7 @@ package viewmodel;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -31,9 +32,12 @@ public class GameLogic implements ActionListener {
     private Harpoon harpoon;
     private Jar jar;
     private EntityHandler entityHandler;
-    private List<Effect> activeEffects; // List untuk menampung efek visual
+    private List<Effect> activeEffects;
+    private char nextStruggleKey;
     private String currentUsername;
+    private String gameOverMessage;
     private GameState currentState;
+    private Timer returnToMenuTimer;
 
     private int remainingTimeSeconds;
     private Timer countdownTimer;
@@ -52,7 +56,6 @@ public class GameLogic implements ActionListener {
         currentState = GameState.MENU;
     }
 
-    // DIMODIFIKASI: Inisialisasi Player disesuaikan dengan sprite baru
     private void initializeGameEntities() {
         String idleSheetPath = "/assets/images/player-idle.png";
         String swimmingSheetPath = "/assets/images/player-swiming.png";
@@ -99,7 +102,7 @@ public class GameLogic implements ActionListener {
         entityHandler = new EntityHandler();
         entityHandler.reset();
         
-        activeEffects = new ArrayList<>(); // Inisialisasi list efek
+        activeEffects = new ArrayList<>();
 
         gameObjectInStruggle = null;
         fishMovingToJar = null;
@@ -110,10 +113,7 @@ public class GameLogic implements ActionListener {
     public void startGame(String username) {
         this.currentUsername = username;
         initializeGameEntities();
-        currentState = GameState.PLAYING;
-        
-        if (gameMusicClip != null) SoundManager.stopSound(gameMusicClip);
-        gameMusicClip = SoundManager.playSound("assets/sounds/game_music.wav", true);
+        currentState = GameState.PLAYING; 
         
         if (countdownTimer != null && countdownTimer.isRunning()) {
             countdownTimer.stop();
@@ -135,7 +135,6 @@ public class GameLogic implements ActionListener {
         gamePanel.requestFocusInWindow();
     }
 
-    // DIMODIFIKASI: Game loop utama sekarang juga mengupdate efek
     @Override
     public void actionPerformed(ActionEvent e) {
         if (currentState == GameState.PLAYING) {
@@ -149,7 +148,7 @@ public class GameLogic implements ActionListener {
             updateFishMovingToJarState();
         }
         
-        updateEffects(); // Update semua efek visual aktif
+        updateEffects();
 
         if (currentState != GameState.MENU) {
             gamePanel.repaint();
@@ -173,7 +172,6 @@ public class GameLogic implements ActionListener {
                 if (entity instanceof Fish) {
                     if (harpoon.getTipCollisionBox().intersects(entity.getCollisionBox())) {
                         harpoon.hookObject(entity);
-                        SoundManager.playSound("assets/sounds/catch_sound.wav", false);
                         break;
                     }
                 }
@@ -200,6 +198,7 @@ public class GameLogic implements ActionListener {
         this.fishMovingToJar = null;
         this.struggleBarValue = 0;
         this.struggleStartTimeMs = System.currentTimeMillis();
+        this.nextStruggleKey = 'Q';
     }
 
     private void updateStrugglingState() {
@@ -229,7 +228,7 @@ public class GameLogic implements ActionListener {
             if (fishMovingToJar instanceof Fish) {
                 jar.addToJar((Fish) fishMovingToJar);
                 remainingTimeSeconds += Constants.TIME_BONUS_PER_CATCH_SECONDS;
-                SoundManager.playSound("assets/sounds/success_sound.wav", false);
+                SoundManager.playSound("catch");
             }
             fishMovingToJar = null;
             currentState = GameState.PLAYING;
@@ -245,7 +244,6 @@ public class GameLogic implements ActionListener {
         entityHandler.updateEntities();
     }
 
-    // DIMODIFIKASI: Menghapus pemanggilan animasi shoot
     public void handlePlayerFireHarpoon(float targetX, float targetY) {
         if (currentState == GameState.PLAYING && !harpoon.isFiring()) {
             harpoon.fire(targetX, targetY);
@@ -253,12 +251,9 @@ public class GameLogic implements ActionListener {
         }
     }
     
-    // DIMODIFIKASI: Logika tombol spasi disesuaikan
     public void handleSpaceBarPress() {
         if (currentState == GameState.PLAYING) {
             showPauseConfirmation();
-        } else if (currentState == GameState.STRUGGLING) {
-            performStruggleAction();
         }
     }
 
@@ -268,6 +263,20 @@ public class GameLogic implements ActionListener {
             currentState == GameState.STRUGGLING ||
             currentState == GameState.FISH_MOVING_TO_JAR) {
             returnToMenu(true);
+        }
+    }
+    
+    public void handleStruggleKeyPress(int keyCode) {
+        if (currentState != GameState.STRUGGLING) {
+            return;
+        }
+
+        if (keyCode == KeyEvent.VK_Q && nextStruggleKey == 'Q') {
+            performStruggleAction();
+            nextStruggleKey = 'E';
+        } else if (keyCode == KeyEvent.VK_E && nextStruggleKey == 'E') {
+            performStruggleAction();
+            nextStruggleKey = 'Q';
         }
     }
 
@@ -286,10 +295,16 @@ public class GameLogic implements ActionListener {
     }
 
     private void failStruggle() {
+        // Cek sisa nyawa SEBELUM dikurangi
+        if (player.getHearts() > 1) {
+            SoundManager.playSound("hit");
+        } else { // Sisa nyawa 1, ini pukulan terakhir
+            SoundManager.playSound("fail");
+        }
+
         player.loseHeart();
-        player.playHurtAnimation(); // Mainkan animasi terluka saat gagal
-        SoundManager.playSound("assets/sounds/fail_sound.wav", false);
-        
+        player.playHurtAnimation();
+
         int effectRenderSize = 64;
         Effect hitEffect = new Effect(
             player.getX() + (player.getWidth() / 2f) - (effectRenderSize / 2f),
@@ -312,7 +327,6 @@ public class GameLogic implements ActionListener {
         }
     }
 
-    // DIMODIFIKASI: Pemicu animasi hurt dan efek hit
     private void checkPlayerGhostCollision() {
         if (player == null || entityHandler == null || currentState != GameState.PLAYING) return;
         List<GameObject> currentEntities = new ArrayList<>(entityHandler.getEntities());
@@ -320,10 +334,16 @@ public class GameLogic implements ActionListener {
         for (GameObject entity : currentEntities) {
             if (entity instanceof Ghost) {
                 if (player.getCollisionBox().intersects(entity.getCollisionBox())) {
+                    // Cek sisa nyawa SEBELUM dikurangi
+                    if (player.getHearts() > 1) {
+                        SoundManager.playSound("hit");
+                    } else { // Sisa nyawa 1, ini pukulan terakhir
+                        SoundManager.playSound("fail");
+                    }
+
                     player.loseHeart();
-                    player.playHurtAnimation(); // Mainkan animasi terluka player
-                    SoundManager.playSound("assets/sounds/fail_sound.wav", false);
-                    
+                    player.playHurtAnimation();
+
                     int effectRenderSize = 64;
                     Effect hitEffect = new Effect(
                         player.getX() + (player.getWidth() / 2f) - (effectRenderSize / 2f),
@@ -346,23 +366,34 @@ public class GameLogic implements ActionListener {
     
     private void triggerGameOver(String message) {
         if (currentState == GameState.GAME_OVER) return;
+
         currentState = GameState.GAME_OVER;
+        this.gameOverMessage = message;
+
         if (player != null) {
             player.resetMovementFlags();
         }
         gameTimerLoop.stop();
         if (countdownTimer != null) countdownTimer.stop();
-        SoundManager.stopSound(gameMusicClip);
-        SoundManager.playSound("assets/sounds/gameover_sound.wav", false);
+
+        SoundManager.stopBGM();
+        SoundManager.playSound("fail");
+
         saveGameResult();
         gamePanel.repaint();
-        JOptionPane.showMessageDialog(gamePanel,
-            message + "\n\nUsername: " + currentUsername +
-            "\nSkor Akhir: " + jar.getTotalScore() +
-            "\nIkan Terkumpul: " + jar.getCollectedCount(),
-            "Game Over",
-            JOptionPane.INFORMATION_MESSAGE);
-        returnToMenu(false);
+
+        // Gunakan variabel anggota kelas untuk timer
+        returnToMenuTimer = new Timer(5000, e -> returnToMenu(false));
+        returnToMenuTimer.setRepeats(false);
+        returnToMenuTimer.start();
+    }
+
+    public void skipGameOverDelay() {
+        // Pastikan hanya berjalan saat game over dan timer masih aktif
+        if (currentState == GameState.GAME_OVER && returnToMenuTimer != null && returnToMenuTimer.isRunning()) {
+            returnToMenuTimer.stop(); // Hentikan timer penunda
+            returnToMenu(false);      // Langsung kembali ke menu
+        }
     }
 
     private void saveGameResult() {
@@ -385,12 +416,12 @@ public class GameLogic implements ActionListener {
             player.resetMovementFlags();
         }
         if (activeEffects != null) {
-            activeEffects.clear(); // Bersihkan sisa efek saat kembali ke menu
+            activeEffects.clear();
         }
         gameTimerLoop.stop();
         if (countdownTimer != null) countdownTimer.stop();
         currentState = GameState.MENU;
-        SoundManager.stopSound(gameMusicClip);
+        SoundManager.stopBGM();
         JFrame currentFrame = (JFrame) SwingUtilities.getWindowAncestor(gamePanel);
         if (currentFrame != null) {
             currentFrame.dispose();
@@ -401,7 +432,6 @@ public class GameLogic implements ActionListener {
         });
     }
 
-    // DIMODIFIKASI: Render game sekarang juga merender efek
     public void renderGame(Graphics g) {
         entityHandler.renderEntities(g);
         player.render(g);
@@ -423,8 +453,6 @@ public class GameLogic implements ActionListener {
             effect.render(g);
         }
     }
-
-    // --- METODE-METODE BARU ---
 
     private void performStruggleAction() {
         float tapEffectiveness = Constants.STRUGGLE_TAP_VALUE;
@@ -473,8 +501,13 @@ public class GameLogic implements ActionListener {
         }
     }
 
-    // --- GETTER ---
+    public long getStruggleStartTimeMs() {
+        return struggleStartTimeMs;
+    }
+
     public Player getPlayer() { return player; }
+    public String getUsername() { return currentUsername; }
+    public String getGameOverMessage() { return gameOverMessage; }
     public GameState getCurrentState() { return currentState; }
     public int getRemainingTime() { return remainingTimeSeconds; }
     public Jar getJar() { return jar; }
