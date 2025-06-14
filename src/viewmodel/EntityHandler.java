@@ -94,7 +94,7 @@ public class EntityHandler {
             newEntity = new DartFish(spawnX, spawnY, spriteSheetPath, movesLeftToRight);
         } else { // 25% Ghost
             spriteSheetPath = "/assets/images/ghost.png"; 
-            spawnY = 44 + random.nextInt(Constants.GAME_HEIGHT - (44 * 2) - 60);
+            spawnY = 66 + random.nextInt(Constants.GAME_HEIGHT - (66 * 2) - 60);
             newEntity = new Ghost(spawnX, spawnY, spriteSheetPath, movesLeftToRight);
         }
         

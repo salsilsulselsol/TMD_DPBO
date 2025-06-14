@@ -2,6 +2,8 @@ package model;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D; // MODIFIKASI: Tambahkan import ini
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.net.URL;
 import javax.imageio.ImageIO;
@@ -12,39 +14,36 @@ public class Player extends GameObject {
     private int hearts;
     private boolean moveLeft, moveRight, moveUp, moveDown;
 
-    // Kumpulan sprite sheet untuk berbagai kondisi
+    // Kumpulan sprite sheet
     private BufferedImage idleSpriteSheet;
     private BufferedImage swimmingSpriteSheet;
-    private BufferedImage hurtSpriteSheet; // Sprite sheet baru untuk animasi terluka
+    private BufferedImage hurtSpriteSheet;
     private BufferedImage currentSpriteSheet;
 
+    // Properti animasi
     private int frameWidth;
     private int frameHeight;
-    
-    // Jumlah frame untuk setiap animasi
     private int totalIdleFrames;
     private int totalSwimmingFrames;
-    private int totalHurtFrames; // Jumlah frame baru
+    private int totalHurtFrames;
     private int currentAnimationTotalFrames;
-
     private int currentAnimFrame;
     private long lastFrameTime;
     private int frameDelayMs;
-    private int hurtFrameDelayMs; // Kecepatan animasi terluka mungkin berbeda
+    private int hurtFrameDelayMs;
 
+    // Status player
     private boolean isMoving;
     private boolean isFacingRight = true;
-    private boolean isImmune = false; // Flag untuk menandakan player sedang dalam animasi hurt
+    private boolean isImmune = false;
 
-    // Enum untuk state animasi, ditambah HURT dan dihapus SHOOTING
-    private enum AnimationState {
-        IDLE,
-        SWIMMING,
-        HURT 
-    }
+    private enum AnimationState { IDLE, SWIMMING, HURT }
     private AnimationState currentAnimationState;
 
-    // Konstruktor disesuaikan: hapus shoot, tambah hurt
+    // Faktor skala untuk hitbox Player
+    private static final float HITBOX_SCALE_X = 0.4f;
+    private static final float HITBOX_SCALE_Y = 0.6f;
+
     public Player(float x, float y, int renderWidth, int renderHeight, int initialHearts,
                   String idleSheetPath, String swimmingSheetPath, String hurtSheetPath,
                   int spriteFrameW, int spriteFrameH,
@@ -72,9 +71,9 @@ public class Player extends GameObject {
         
         setAnimationState(AnimationState.IDLE);
         resetMovementFlags();
+        updateCollisionBox();
     }
 
-    // Metode load disesuaikan: hapus shoot, tambah hurt
     private void loadSpriteSheets(String idlePath, String swimmingPath, String hurtPath) {
         try {
             URL idleUrl = getClass().getResource(idlePath);
@@ -94,7 +93,6 @@ public class Player extends GameObject {
         }
     }
 
-    // Metode set state disesuaikan: hapus shoot, tambah hurt
     private void setAnimationState(AnimationState newState) {
         if (this.currentAnimationState == newState) return;
         
@@ -118,7 +116,6 @@ public class Player extends GameObject {
         }
     }
 
-    // Logika update animasi disesuaikan untuk menangani state HURT
     private void updateAnimationLogic() {
         if (currentSpriteSheet == null || currentAnimationTotalFrames == 0) return;
 
@@ -129,7 +126,6 @@ public class Player extends GameObject {
             currentAnimFrame++;
             if (currentAnimFrame >= currentAnimationTotalFrames) {
                 if (currentAnimationState == AnimationState.HURT) {
-                    // Jika animasi HURT selesai, kembali ke state normal
                     finishHurtAnimation();
                 } else {
                     currentAnimFrame = 0;
@@ -140,8 +136,24 @@ public class Player extends GameObject {
     }
     
     @Override
+    protected void updateCollisionBox() {
+        int hitboxWidth = (int) (this.width * HITBOX_SCALE_X);
+        int hitboxHeight = (int) (this.height * HITBOX_SCALE_Y);
+        int offsetX = (this.width - hitboxWidth) / 2;
+        int offsetY = (this.height - hitboxHeight) / 2;
+
+        if (this.collisionBox == null) {
+            this.collisionBox = new Rectangle((int)this.x + offsetX, (int)this.y + offsetY, hitboxWidth, hitboxHeight);
+        } else {
+            this.collisionBox.x = (int)this.x + offsetX;
+            this.collisionBox.y = (int)this.y + offsetY;
+            this.collisionBox.width = hitboxWidth;
+            this.collisionBox.height = hitboxHeight;
+        }
+    }
+
+    @Override
     public void update() {
-        // Jika sedang dalam animasi 'terluka', jangan proses gerakan atau perubahan state lain
         if (isImmune) {
             updateAnimationLogic();
             return;
@@ -155,7 +167,6 @@ public class Player extends GameObject {
         if (moveUp) { dy -= speed; }
         if (moveDown) { dy += speed; }
         
-        // Atur animasi berdasarkan gerakan
         if (isMoving && currentAnimationState != AnimationState.SWIMMING) {
             setAnimationState(AnimationState.SWIMMING);
         } else if (!isMoving && currentAnimationState != AnimationState.IDLE) {
@@ -165,7 +176,6 @@ public class Player extends GameObject {
         x += dx;
         y += dy;
 
-        // Batasan layar
         if (x < 0) x = 0;
         if (y < 0) y = 0;
         if (x + this.width > Constants.GAME_WIDTH) x = Constants.GAME_WIDTH - this.width;
@@ -175,18 +185,15 @@ public class Player extends GameObject {
         updateAnimationLogic();
     }
 
-    // Metode baru untuk memutar animasi HURT
     public void playHurtAnimation() {
         if (!isImmune) {
-            isImmune = true; // Set flag agar tidak bisa diganggu
+            isImmune = true;
             setAnimationState(AnimationState.HURT);
         }
     }
 
-    // Metode baru yang dipanggil setelah animasi HURT selesai
     private void finishHurtAnimation() {
-        isImmune = false; // Matikan flag
-        // Kembali ke animasi idle/swimming tergantung status gerakan terakhir
+        isImmune = false;
         if (isMoving) {
             setAnimationState(AnimationState.SWIMMING);
         } else {
@@ -194,7 +201,6 @@ public class Player extends GameObject {
         }
     }
     
-    // Metode render tidak perlu banyak diubah
     @Override
     public void render(Graphics g) {
         if (currentSpriteSheet != null && currentAnimationTotalFrames > 0) {
@@ -218,6 +224,18 @@ public class Player extends GameObject {
             g.setColor(Color.YELLOW);
             g.fillRect((int)x, (int)y, this.width, this.height);
         }
+        
+        // --- MODIFIKASI DIMULAI ---
+        // Hapus `super.render(g);` dan ganti dengan kode untuk menggambar hitbox secara langsung.
+        if (DEBUG_DRAW_HITBOX && collisionBox != null) {
+            Graphics2D g2d = (Graphics2D) g.create(); 
+            g2d.setColor(new Color(255, 0, 0, 80)); 
+            g2d.fillRect(collisionBox.x, collisionBox.y, collisionBox.width, collisionBox.height);
+            g2d.setColor(Color.RED); 
+            g2d.drawRect(collisionBox.x, collisionBox.y, collisionBox.width, collisionBox.height);
+            g2d.dispose();
+        }
+        // --- MODIFIKASI SELESAI ---
     }
 
     public void resetMovementFlags() {

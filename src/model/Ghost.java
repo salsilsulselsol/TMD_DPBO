@@ -8,8 +8,8 @@ public class Ghost extends GameObject {
     private float speedX;
 
     // Faktor skala untuk hitbox Ghost (misalnya, 0.7 berarti 70% dari ukuran render)
-    private static final float HITBOX_SCALE_X = 0.5f; // 70% dari lebar render
-    private static final float HITBOX_SCALE_Y = 0.6f; // 80% dari tinggi render (mungkin ingin lebih tinggi dari lebar)
+    private static final float HITBOX_SCALE_X = 0.6f; // 70% dari lebar render
+    private static final float HITBOX_SCALE_Y = 0.8f; // 80% dari tinggi render (mungkin ingin lebih tinggi dari lebar)
 
     public Ghost(float x, float y, int renderWidth, int renderHeight, String spriteSheetPath, 
                  boolean movesLeftToRight, int spriteFrameW, int spriteFrameH, int totalFrames, int frameDelay) {
@@ -28,7 +28,7 @@ public class Ghost extends GameObject {
     }
     
     public Ghost(float x, float y, String spriteSheetPath, boolean movesLeftToRight) {
-        this(x, y, 31, 44, spriteSheetPath, movesLeftToRight,
+        this(x, y, 47, 66, spriteSheetPath, movesLeftToRight,
              31, 44, 4, 200); 
     }
 

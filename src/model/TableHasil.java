@@ -4,55 +4,47 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import javax.swing.table.DefaultTableModel;
 
-public class TableHasil extends DB { // Sebaiknya DB di-pass sebagai argumen atau pakai try-with-resources
+public class TableHasil extends DB {
     private String tableName;
 
-    // Konstruktor yang menerima objek DB untuk dikelola dari luar
-    // public TableHasil(DB database) { 
-    //     super(); // Ini akan error jika DB tidak punya default constructor
-    //     this.dbInstance = database; 
-    //     this.tableName = "thasil";
-    // }
-    // Atau tetap seperti ini jika DB selalu membuat koneksi baru per instance TableHasil
-
-    public TableHasil() throws SQLException { // Disederhanakan, Exception generik tidak perlu
+    public TableHasil() throws SQLException {
         super(); // Membuat koneksi DB baru
         this.tableName = "thasil";
     }
 
-
     public void insertOrUpdateHasil(GameData data) {
-        // PDF: "Jika sudah ada maka tidak perlu dimasukkan ke tabel thasil dan hanya menambah nilai score dan count." [cite: 32, 78]
-        // Ini bisa diinterpretasikan sebagai: Jika user 'X' ada dengan skor 100, main lagi dapat 50, maka skor 'X' jadi 150.
-        // Atau: Jika user 'X' ada skor 100, main lagi dapat 50, skor 'X' di-update jadi 50 (skor sesi ini).
-        // Umumnya leaderboard game menyimpan skor tertinggi atau skor sesi terakhir.
-        // Kode di bawah mengimplementasikan update/replace skor sesi terakhir.
-        // Jika ingin akumulatif, logika SELECT skor lama + ADD + UPDATE diperlukan.
-        
         ResultSet rsCheck = null;
         try {
+            // Cek apakah username sudah ada di database
             String checkQuery = "SELECT skor, count FROM " + this.tableName + " WHERE username='" + data.getUsername() + "'";
             createQuery(checkQuery); 
             rsCheck = getResult();
 
             if (rsCheck.next()) { 
-                // Interpretasi: Update dengan skor baru jika lebih tinggi, atau selalu update.
-                // Untuk tugas ini, kita akan selalu update dengan skor sesi ini.
-                // Jika ingin akumulasi skor dan count dari DB:
-                // int oldSkor = rsCheck.getInt("skor");
-                // int oldCound = rsCheck.getInt("count");
-                // data.setSkor(data.getSkor() + oldSkor);
-                // data.setCount(data.getCount() + oldCound);
+                // --- MODIFIKASI DIMULAI ---
+                // Jika username sudah ada, ambil data lama dan akumulasikan.
 
+                // 1. Ambil skor dan count yang sudah ada dari database.
+                int oldSkor = rsCheck.getInt("skor");
+                int oldCount = rsCheck.getInt("count");
+
+                // 2. Akumulasikan dengan skor dan count dari sesi permainan saat ini.
+                int newSkor = oldSkor + data.getSkor();
+                int newCount = oldCount + data.getCount();
+
+                // 3. Buat query UPDATE dengan nilai yang sudah diakumulasikan.
                 String updateQuery = "UPDATE " + this.tableName + 
-                                     " SET skor=" + data.getSkor() + 
-                                     ", count=" + data.getCount() + 
+                                     " SET skor=" + newSkor + 
+                                     ", count=" + newCount + 
                                      " WHERE username='" + data.getUsername() + "'";
-                // closeResult() akan dipanggil sebelum createUpdate jika createQuery dieksekusi di try-with-resource.
-                // Karena tidak, kita panggil manual.
-                closeResultInternal(); // Menutup rsCheck dan statement-nya
+                
+                // Tutup result set dari query SELECT sebelum menjalankan UPDATE
+                closeResultInternal(); 
                 createUpdate(updateQuery);
+                // --- MODIFIKASI SELESAI ---
+
             } else { 
+                // Jika username belum ada, masukkan sebagai data baru.
                 closeResultInternal();
                 String insertQuery = "INSERT INTO " + this.tableName + " (username, skor, count) VALUES ('" +
                                      data.getUsername() + "', " +
@@ -60,7 +52,7 @@ public class TableHasil extends DB { // Sebaiknya DB di-pass sebagai argumen ata
                                      data.getCount() + ")";
                 createUpdate(insertQuery);
             }
-        } catch (SQLException e) { // Lebih spesifik dari Exception
+        } catch (SQLException e) {
             System.err.println("Error di insertOrUpdateHasil: " + e.getMessage());
             e.printStackTrace();
         } finally {
@@ -78,7 +70,7 @@ public class TableHasil extends DB { // Sebaiknya DB di-pass sebagai argumen ata
     public DefaultTableModel getAllHasilForTable() {
         DefaultTableModel dataTableModel = new DefaultTableModel(new Object[]{"Username", "Skor", "Count"}, 0);
         try {
-            String query = "SELECT username, skor, count FROM " + this.tableName + " ORDER BY skor DESC, count DESC"; // Order by skor, lalu count
+            String query = "SELECT username, skor, count FROM " + this.tableName + " ORDER BY skor DESC, count DESC";
             createQuery(query);
             ResultSet rs = getResult();
             while (rs.next()) {
@@ -88,12 +80,12 @@ public class TableHasil extends DB { // Sebaiknya DB di-pass sebagai argumen ata
                     rs.getInt("count")
                 });
             }
-        } catch (SQLException e) { // Lebih spesifik
+        } catch (SQLException e) {
             System.err.println("Error di getAllHasilForTable: " + e.getMessage());
             e.printStackTrace();
         } finally {
             try {
-                closeResultInternal(); // Selalu tutup setelah query selesai
+                closeResultInternal();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -101,17 +93,15 @@ public class TableHasil extends DB { // Sebaiknya DB di-pass sebagai argumen ata
         return dataTableModel;
     }
     
-    // Metode internal untuk menutup rs dan stm dari createQuery() di TableHasil
     private void closeResultInternal() throws SQLException {
-        if (getResult() != null && !getResult().isClosed()) { // Gunakan getter untuk ResultSet
-            // Statement akan ditutup oleh super.closeResult() jika dipanggil
+        if (getResult() != null && !getResult().isClosed()) {
+            // Statement akan ditutup oleh super.close()
         }
-        super.close(); // Panggil metode closeResult dari kelas DB
+        super.close(); 
     }
 
-    // Override close() dari DB untuk memastikan koneksi ditutup jika TableHasil dibuat dengan new
     @Override
     public void close() throws SQLException {
-        super.close(); // Panggil close() dari kelas DB untuk menutup koneksi
+        super.close();
     }
 }
