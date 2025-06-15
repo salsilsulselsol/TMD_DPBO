@@ -12,35 +12,45 @@ import model.Fish;
 import model.GameObject;
 import model.Ghost;
 
+// Kelas ini bertanggung jawab untuk mengelola semua entitas dinamis (ikan dan hantu) di dalam game.
 public class EntityHandler {
+    // Daftar semua entitas yang aktif di layar. Dibuat thread-safe dengan synchronizedList.
     private final List<GameObject> entities; 
     private Random random = new Random();
     
+    // Variabel untuk mengatur interval waktu kemunculan entitas secara acak.
     private long lastSpawnTime = 0;
     private long spawnIntervalMinMs = 1200; 
     private long spawnIntervalVarMs = 2000; 
     private long currentSpawnInterval;
     
+    // Batas jumlah maksimum entitas di layar untuk menjaga performa.
     private int maxEntitiesOnScreen = 8; 
 
+    // Konstruktor, menginisialisasi daftar entitas dan interval spawn pertama.
     public EntityHandler() {
         this.entities = Collections.synchronizedList(new ArrayList<>());
         setNextSpawnInterval();
     }
     
+    // Mengatur waktu acak untuk kemunculan entitas berikutnya.
     private void setNextSpawnInterval() {
         currentSpawnInterval = spawnIntervalMinMs + random.nextInt((int)spawnIntervalVarMs + 1);
     }
 
+    // Metode utama yang dipanggil di setiap frame dari game loop untuk mengupdate semua entitas.
     public void updateEntities() { 
-        trySpawnNewEntity(); 
+        trySpawnNewEntity(); // Coba untuk memunculkan entitas baru.
         
+        // Menggunakan 'synchronized' untuk menghindari error saat mengakses list dari thread yang berbeda.
         synchronized (entities) { 
+            // Menggunakan Iterator agar aman saat menghapus entitas dari list selagi iterasi berjalan.
             Iterator<GameObject> iterator = entities.iterator();
             while (iterator.hasNext()) {
                 GameObject entity = iterator.next();
-                entity.update(); 
+                entity.update(); // Panggil metode update dari masing-masing entitas.
 
+                // Cek apakah entitas sudah keluar dari batas layar.
                 boolean remove = false;
                 if (entity instanceof Fish) { 
                     if (((Fish) entity).isOutOfBounds()) {
@@ -51,6 +61,7 @@ public class EntityHandler {
                         remove = true;
                     }
                 }
+                // Jika sudah keluar batas, hapus dari daftar.
                 if (remove) {
                     iterator.remove();
                 }
@@ -58,16 +69,19 @@ public class EntityHandler {
         }
     }
 
+    // Cek apakah sudah waktunya untuk memunculkan entitas baru.
     private void trySpawnNewEntity() {
         long currentTime = System.currentTimeMillis();
         
+        // Spawn jika waktu interval sudah terlewati dan jumlah entitas di layar belum maksimal.
         if (currentTime - lastSpawnTime > currentSpawnInterval && entities.size() < maxEntitiesOnScreen) {
             spawnRandomEntity(); 
-            lastSpawnTime = currentTime;
-            setNextSpawnInterval();
+            lastSpawnTime = currentTime; // Catat waktu spawn terakhir.
+            setNextSpawnInterval(); // Tentukan interval waktu untuk spawn berikutnya.
         }
     }
 
+    // Logika untuk membuat entitas baru secara acak (jenis ikan atau hantu).
     private void spawnRandomEntity() {
         float spawnY;
         boolean movesLeftToRight = random.nextBoolean(); 
@@ -78,6 +92,7 @@ public class EntityHandler {
         String spriteSheetPath;
         GameObject newEntity = null;
 
+        // Tentukan tipe entitas yang akan di-spawn dengan probabilitas tertentu.
         int type = random.nextInt(100); 
 
         if (type < 35) { // 35% Fish
@@ -98,6 +113,7 @@ public class EntityHandler {
             newEntity = new Ghost(spawnX, spawnY, spriteSheetPath, movesLeftToRight);
         }
         
+        // Tambahkan entitas baru ke dalam daftar jika berhasil dibuat.
         if (newEntity != null) {
             synchronized (entities) {
                 entities.add(newEntity);
@@ -105,12 +121,14 @@ public class EntityHandler {
         }
     }
     
+    // Menghapus satu entitas spesifik dari daftar (misal: setelah ikan ditangkap).
     public void removeEntity(GameObject entity) {
         synchronized (entities) {
             entities.remove(entity);
         }
     }
 
+    // Menggambar semua entitas yang ada di dalam daftar ke layar.
     public void renderEntities(Graphics g) { 
         synchronized (entities) { 
             for (GameObject entity : entities) { 
@@ -119,17 +137,19 @@ public class EntityHandler {
         }
     }
 
+    // Mengembalikan salinan dari daftar entitas agar kelas lain bisa membacanya tanpa mengubah daftar asli.
     public List<GameObject> getEntities() { 
         synchronized (entities) {
             return new ArrayList<>(entities); 
         }
     }
     
+    // Menghapus semua entitas dari daftar (digunakan saat memulai game baru).
     public void reset() { 
         synchronized (entities) {
             entities.clear();
         }
-        lastSpawnTime = 0;
+        lastSpawnTime = 0; // Reset timer spawn.
         setNextSpawnInterval();
     }
 }

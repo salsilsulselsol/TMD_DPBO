@@ -42,18 +42,22 @@ import viewmodel.GameLogic;
 import viewmodel.InputHandler;
 import viewmodel.SoundManager;
 
+// Kelas ini merepresentasikan jendela menu utama permainan.
 public class MenuScreen extends JFrame {
     
+    // Deklarasi komponen-komponen UI yang akan digunakan.
     private JTable scoreTable;
     private JTextField usernameField;
     private JButton playButton, quitButton;
     private Clip menuMusicClip;
-    private String selectedUsernameFromTable = "";
-    private Timer animationTimer;
+    private String selectedUsernameFromTable = ""; // Menyimpan username saat baris tabel diklik.
+    private Timer animationTimer; // Timer untuk animasi karakter di menu.
 
+    // Kelas internal untuk membuat panel dengan gambar latar belakang.
     class BackgroundPanel extends JPanel {
         private Image bgImageFar, bgImageSand;
         public BackgroundPanel() {
+            // Memuat gambar latar belakang dari assets.
             try {
                 URL farUrl = getClass().getResource("/assets/images/far.png");
                 if (farUrl != null) bgImageFar = new ImageIcon(farUrl).getImage();
@@ -61,6 +65,7 @@ public class MenuScreen extends JFrame {
                 if (sandUrl != null) bgImageSand = new ImageIcon(sandUrl).getImage();
             } catch (Exception e) { e.printStackTrace(); }
         }
+        // Override metode paintComponent untuk menggambar background.
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -69,46 +74,57 @@ public class MenuScreen extends JFrame {
         }
     }
 
+    // Konstruktor utama untuk membangun seluruh tampilan menu.
     public MenuScreen() {
         setTitle("Monster Fish Hunt - Menu");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         
+        // Mengatur panel utama dengan background kustom.
         BackgroundPanel backgroundPanel = new BackgroundPanel();
         backgroundPanel.setLayout(new BorderLayout(40, 0));
         backgroundPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         setContentPane(backgroundPanel);
 
+        // Membuat dan menambahkan panel kiri (tabel skor) dan kanan (kontrol game).
         JPanel leftPanel = createLeftPanel();
         backgroundPanel.add(leftPanel, BorderLayout.WEST);
 
         JPanel rightPanel = createRightPanel();
         backgroundPanel.add(rightPanel, BorderLayout.CENTER);
 
+        // Menambahkan listener untuk semua komponen interaktif.
         addListeners();
+        // Mengatur ukuran window dan menampilkannya di tengah layar.
         setPreferredSize(new Dimension(Constants.GAME_WIDTH, Constants.GAME_HEIGHT));
         pack();
         setLocationRelativeTo(null);
+        // Memutar musik latar menu.
         SoundManager.playBGM("/assets/sounds/menu-bgm.wav");
     }
 
+    // Metode untuk membuat dan mengatur panel kiri yang berisi judul dan tabel skor.
     private JPanel createLeftPanel() {
         JPanel panel = new JPanel(new BorderLayout(0, 20));
-        panel.setOpaque(false);
+        panel.setOpaque(false); // Dibuat transparan agar background terlihat.
         panel.setPreferredSize(new Dimension(320, 0));
 
+        // Membuat label judul game.
         JLabel titleLabel = new JLabel("<html>MONSTER<br>FISH HUNT</html>");
         titleLabel.setFont(FontManager.getPressStart2PRegular(32f));
         titleLabel.setForeground(new Color(255, 215, 0));
         titleLabel.setBorder(new EmptyBorder(0, 0, 10, 0));
         panel.add(titleLabel, BorderLayout.NORTH);
 
+        // Mengambil data skor dari database dan menampilkannya di JTable.
         try (TableHasil th = new TableHasil()) {
             scoreTable = new JTable(th.getAllHasilForTable());
         } catch (Exception e) {
+            // Fallback jika koneksi database gagal.
             scoreTable = new JTable(new DefaultTableModel(new Object[]{"Username", "Skor", "Count"}, 0));
         }
         
+        // Mengatur gaya visual tabel skor.
         scoreTable.setOpaque(false);
         scoreTable.setBackground(new Color(15, 20, 40, 150));
         scoreTable.setForeground(Color.WHITE);
@@ -116,6 +132,7 @@ public class MenuScreen extends JFrame {
         scoreTable.setFont(FontManager.getPressStart2PRegular(8f));
         scoreTable.setGridColor(new Color(255, 255, 255, 50));
         
+        // Membungkus tabel dengan JScrollPane agar bisa di-scroll jika data banyak.
         JScrollPane tableScrollPane = new JScrollPane(scoreTable);
         tableScrollPane.setOpaque(false);
         tableScrollPane.getViewport().setOpaque(false);
@@ -125,11 +142,13 @@ public class MenuScreen extends JFrame {
         return panel;
     }
 
+    // Metode untuk membuat dan mengatur panel kanan yang berisi input dan tombol.
     private JPanel createRightPanel() {
         JPanel panel = new JPanel();
         panel.setOpaque(false);
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 
+        // Membuat semua sub-panel: animasi player, input username, tombol, dan info.
         JPanel playerPanel = createAnimatedPlayerPanel();
         JPanel usernameInputPanel = new JPanel();
         usernameInputPanel.setOpaque(false);
@@ -157,6 +176,7 @@ public class MenuScreen extends JFrame {
         
         JPanel infoPanel = createInfoPanel();
 
+        // Menata semua sub-panel di panel kanan dengan spasi.
         panel.add(Box.createVerticalGlue());
         panel.add(playerPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 20)));
@@ -167,6 +187,7 @@ public class MenuScreen extends JFrame {
         panel.add(infoPanel);
         panel.add(Box.createVerticalGlue());
         
+        // Menambahkan teks kredit di bagian bawah.
         JLabel creditTextLabel = new JLabel("Game by Faisal N.Q.", SwingConstants.CENTER);
         creditTextLabel.setFont(FontManager.getPressStart2PRegular(7f).deriveFont(Font.ITALIC));
         creditTextLabel.setForeground(Color.LIGHT_GRAY);
@@ -177,30 +198,36 @@ public class MenuScreen extends JFrame {
         return panel;
     }
 
+    // Metode untuk membuat panel yang menampilkan animasi player idle.
     private JPanel createAnimatedPlayerPanel() {
+        // Menggunakan anonymous inner class untuk membuat panel dengan logika kustom.
         JPanel playerPanel = new JPanel() {
             private BufferedImage playerIdleSheet;
             private int currentPlayerFrame = 0;
             private final int frameWidth = 80, frameHeight = 80, frameCount = 6;
             
+            // Blok inisialisasi untuk panel ini.
             {
                 setOpaque(false);
                 setAlignmentX(Component.CENTER_ALIGNMENT);
                 Dimension panelSize = new Dimension(120, 120); 
                 setPreferredSize(panelSize);
                 setMaximumSize(panelSize);
+                // Memuat sprite sheet animasi player.
                 try {
                     URL url = getClass().getResource("/assets/images/player-idle.png");
                     if (url != null) playerIdleSheet = ImageIO.read(url);
                 } catch (IOException e) { e.printStackTrace(); }
                 
+                // Membuat dan memulai timer untuk menggerakkan frame animasi.
                 animationTimer = new Timer(120, e -> {
-                    currentPlayerFrame = (currentPlayerFrame + 1) % frameCount;
-                    repaint();
+                    currentPlayerFrame = (currentPlayerFrame + 1) % frameCount; // Pindah ke frame berikutnya.
+                    repaint(); // Gambar ulang panel untuk menampilkan frame baru.
                 });
                 animationTimer.start();
             }
 
+            // Menggambar frame animasi saat ini.
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -214,11 +241,13 @@ public class MenuScreen extends JFrame {
         return playerPanel;
     }
     
+    // Metode untuk membuat panel info di sisi kanan.
     private JPanel createInfoPanel() {
         JPanel infoPanel = new JPanel();
         infoPanel.setOpaque(false);
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         
+        // Mengatur border dengan judul "Info".
         Border titledBorder = BorderFactory.createTitledBorder(
             BorderFactory.createEmptyBorder(), "Info", 0, 0, FontManager.getPressStart2PRegular(10f), Color.WHITE);
         Border paddedBorder = BorderFactory.createCompoundBorder(
@@ -226,6 +255,7 @@ public class MenuScreen extends JFrame {
         infoPanel.setBorder(paddedBorder);
         infoPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        // Menambahkan setiap baris info (ikon dan teks) ke panel.
         infoPanel.add(createInfoRow("/assets/images/fish.png", 32, 32, "+ " + new Fish(0,0,"",false).getScoreValue() + " Poin"));
         infoPanel.add(createInfoRow("/assets/images/fish-dart.png", 39, 20, "+ " + new DartFish(0,0,"",false).getScoreValue() + " Poin"));
         infoPanel.add(createInfoRow("/assets/images/fish-big.png", 54, 49, "+ " + new BigFish(0,0,"",false).getScoreValue() + " Poin"));
@@ -236,24 +266,24 @@ public class MenuScreen extends JFrame {
         return infoPanel;
     }
 
-    // --- METODE INI DIMODIFIKASI TOTAL UNTUK PERATAAN (ALIGNMENT) ---
+    // Metode pembantu untuk membuat satu baris di dalam panel info.
     private JPanel createInfoRow(String imagePath, int frameW, int frameH, String text) {
         JPanel rowPanel = new JPanel(new BorderLayout(10, 0));
         rowPanel.setOpaque(false);
         rowPanel.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
 
-        // Panel khusus untuk menampung dan menengahkan ikon
+        // Wadah untuk ikon agar posisinya rapi dan terpusat.
         JPanel iconContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         iconContainer.setOpaque(false);
-        iconContainer.setPreferredSize(new Dimension(48, 40)); // Ukuran wadah tetap untuk semua ikon
+        iconContainer.setPreferredSize(new Dimension(48, 40));
         
         try {
+            // Memuat, memotong, dan menskalakan ikon dari sprite sheet.
             URL url = getClass().getResource(imagePath);
             if (url != null) {
                 BufferedImage sheet = ImageIO.read(url);
                 BufferedImage icon = sheet.getSubimage(0, 0, frameW, frameH);
                 
-                // Skala gambar dengan mempertahankan rasio aspek, tinggi maksimal 32px
                 int newHeight = 32;
                 int newWidth = (int) (frameW * ((double) newHeight / frameH));
                 
@@ -272,14 +302,18 @@ public class MenuScreen extends JFrame {
         return rowPanel;
     }
 
+    // Metode untuk mendaftarkan semua listener ke komponen UI.
     private void addListeners() {
+        // Listener untuk tombol Play, memanggil handlePlayButton.
         playButton.addActionListener(e -> handlePlayButton());
+        // Listener untuk tombol Quit, menghentikan aplikasi.
         quitButton.addActionListener(e -> {
             animationTimer.stop();
             if (menuMusicClip != null) SoundManager.stopBGM();
             System.exit(0);
         });
         
+        // Listener untuk tabel skor, memungkinkan user memilih username dengan klik.
         scoreTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -292,8 +326,10 @@ public class MenuScreen extends JFrame {
         });
     }
 
+    // Logika yang dijalankan saat tombol "Play" ditekan.
     private void handlePlayButton() {
         String username = usernameField.getText().trim();
+        // Validasi input username.
         if (username.isEmpty()) {
             if (!selectedUsernameFromTable.isEmpty()) {
                 username = selectedUsernameFromTable;
@@ -303,21 +339,22 @@ public class MenuScreen extends JFrame {
             }
         }
         
+        // Hentikan semua proses di menu.
         animationTimer.stop();
         if (menuMusicClip != null) SoundManager.stopBGM();
-        this.dispose();
+        this.dispose(); // Tutup window menu.
 
-        // --- LOGIKA YANG DIPERBAIKI ---
-        // 1. Buat GamePanel. GamePanel akan otomatis membuat GameLogic-nya sendiri.
+        // Alur untuk memulai permainan.
+        // 1. Buat GamePanel, yang akan otomatis membuat GameLogic-nya sendiri.
         GamePanel gamePanel = new GamePanel();
         
-        // 2. Ambil GameLogic yang sudah dibuat oleh GamePanel.
+        // 2. Ambil instance GameLogic dari GamePanel.
         GameLogic gameLogic = gamePanel.getGameLogic();
         
         // 3. Buat InputHandler menggunakan GameLogic yang benar.
         InputHandler inputHandler = new InputHandler(gameLogic);
         
-        // 4. Buat GameWindow dan mulai permainan.
+        // 4. Buat GameWindow baru dan mulai permainannya.
         new GameWindow(gamePanel, inputHandler);
         gameLogic.startGame(username);
     }
